@@ -16,11 +16,15 @@ public class User {
     @Column(nullable = false, length = 100, unique = true)
     private String email;
 
+    @Column(nullable = false, length = 255)
+    private String password;
+
     protected User() {}   // JPA 기본 생성자
 
     public User(String name, String email) {
         this.name = name;
         this.email = email;
+        this.password = password;
     }
 
     // getter / setter
