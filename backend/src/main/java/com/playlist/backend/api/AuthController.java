@@ -1,5 +1,7 @@
 package com.playlist.backend.api;
 
+import com.playlist.backend.dto.request.LoginRequest;
+import com.playlist.backend.dto.request.SignupRequest;
 import com.playlist.backend.entity.User;
 import com.playlist.backend.service.UserService;
 import org.springframework.web.bind.annotation.*;
@@ -24,24 +26,5 @@ public class AuthController {
     @PostMapping("/login")
     public User login(@RequestBody LoginRequest request) {
         return userService.login(request.getEmail(), request.getPassword());
-    }
-
-    // ===== DTO =====
-    public static class SignupRequest {
-        private String name;
-        private String email;
-        private String password;
-
-        public String getName() { return name; }
-        public String getEmail() { return email; }
-        public String getPassword() { return password; }
-    }
-
-    public static class LoginRequest {
-        private String email;
-        private String password;
-
-        public String getEmail() { return email; }
-        public String getPassword() { return password; }
     }
 }

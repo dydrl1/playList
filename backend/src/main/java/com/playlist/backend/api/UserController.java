@@ -26,7 +26,7 @@ public class UserController {
     // 유저 생성
     @PostMapping
     public User createUser(@RequestBody UserCreateRequest request) {
-        User user = new User(request.getName(), request.getEmail());
+        User user = new User(request.getName(), request.getEmail(), request.getPassword());
         return userRepository.save(user);
     }
 
@@ -34,8 +34,11 @@ public class UserController {
     public static class UserCreateRequest {
         private String name;
         private String email;
+        private String password;
 
         public String getName() { return name; }
         public String getEmail() { return email; }
+        public String getPassword() { return password; }
+
     }
 }

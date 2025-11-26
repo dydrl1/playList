@@ -4,6 +4,7 @@ import com.playlist.backend.entity.User;
 import com.playlist.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -36,7 +37,9 @@ public class UserService {
      */
     public User login(String email, String rawPassword) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이메일입니다."));
+                .orElseThrow(() -> {
+                    throw new IllegalArgumentException("존재하지 않는 이메일입니다.");
+                });
 
         // 비밀번호 검증
         if (!user.getPassword().equals(rawPassword)) {
