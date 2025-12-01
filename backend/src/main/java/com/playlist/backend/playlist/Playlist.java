@@ -1,5 +1,8 @@
-package com.playlist.backend.entity;
+package com.playlist.backend.playlist;
 
+import com.playlist.backend.playlistLike.PlaylistLike;
+import com.playlist.backend.playlistTrack.PlaylistTrack;
+import com.playlist.backend.user.User;
 import jakarta.persistence.*;
 import java.util.ArrayList;
 import java.util.List;

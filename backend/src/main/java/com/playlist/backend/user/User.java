@@ -1,4 +1,4 @@
-package com.playlist.backend.entity;
+package com.playlist.backend.user;
 
 import jakarta.persistence.*;
 
@@ -42,4 +42,6 @@ public class User {
     public void setEmail(String email) { this.email = email; }
 
     public void setPassword(String password) { this.password = password; }
+
+    public void updateName(String newName){ this.name = newName; }
 }

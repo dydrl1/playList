@@ -1,5 +1,7 @@
-package com.playlist.backend.entity;
+package com.playlist.backend.playlistTrack;
 
+import com.playlist.backend.Track.Track;
+import com.playlist.backend.playlist.Playlist;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 

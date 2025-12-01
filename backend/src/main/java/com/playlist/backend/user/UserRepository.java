@@ -1,6 +1,5 @@
-package com.playlist.backend.repository;
+package com.playlist.backend.user;
 
-import com.playlist.backend.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

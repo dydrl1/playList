@@ -1,6 +1,5 @@
-package com.playlist.backend.repository;
+package com.playlist.backend.Track;
 
-import com.playlist.backend.entity.Track;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

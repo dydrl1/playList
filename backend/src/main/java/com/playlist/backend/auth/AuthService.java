@@ -1,19 +1,22 @@
-package com.playlist.backend.service;
+package com.playlist.backend.auth;
 
-import com.playlist.backend.entity.User;
-import com.playlist.backend.repository.UserRepository;
+import com.playlist.backend.user.User;
+import com.playlist.backend.user.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.Optional;
 
 @Service
 @Transactional
-public class UserService {
+public class AuthService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository) {
+    public AuthService(UserRepository userRepository,
+                       PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -26,8 +29,10 @@ public class UserService {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
-        // (암호화 X 버전) → 후에 BCrypt 적용 예정
-        User user = new User(name, email, rawPassword);
+        // 비밀번호 암호화 (BCrypt)
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+
+        User user = new User(name, email, encodedPassword);
 
         return userRepository.save(user);
     }
@@ -37,12 +42,10 @@ public class UserService {
      */
     public User login(String email, String rawPassword) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> {
-                    throw new IllegalArgumentException("존재하지 않는 이메일입니다.");
-                });
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 이메일입니다."));
 
-        // 비밀번호 검증
-        if (!user.getPassword().equals(rawPassword)) {
+        // 비밀번호 검증 (암호화 비교)
+        if (!passwordEncoder.matches(rawPassword, user.getPassword())) {
             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
         }
 

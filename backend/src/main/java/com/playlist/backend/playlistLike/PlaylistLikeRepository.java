@@ -1,6 +1,5 @@
-package com.playlist.backend.repository;
+package com.playlist.backend.playlistLike;
 
-import com.playlist.backend.entity.PlaylistLike;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PlaylistLikeRepository extends JpaRepository<PlaylistLike, Long> {

@@ -1,12 +1,11 @@
-package com.playlist.backend.dto.request;
+package com.playlist.backend.auth.dto;
 
 
-public class SignupRequest {
-    private String name;
+public class LoginRequest {
+
     private String email;
     private String password;
 
-    public String getName() { return name; }
     public String getEmail() { return email; }
     public String getPassword() { return password; }
 }
