@@ -1,5 +1,7 @@
 package com.playlist.backend.auth;
 
+import com.playlist.backend.common.exception.BusinessException;
+import com.playlist.backend.common.exception.ErrorCode;
 import com.playlist.backend.user.User;
 import com.playlist.backend.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,12 +28,13 @@ public class AuthService {
 
         // 이메일 중복 검증
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            throw new BusinessException(ErrorCode.EMAIL_DUPLICATED);
         }
 
         // 비밀번호 암호화 (BCrypt)
         String encodedPassword = passwordEncoder.encode(rawPassword);
 
+        // User 엔티티 생성
         User user = new User(name, email, encodedPassword);
 
         return userRepository.save(user);
