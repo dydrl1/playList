@@ -4,11 +4,18 @@ import com.playlist.backend.playlistLike.PlaylistLike;
 import com.playlist.backend.playlistTrack.PlaylistTrack;
 import com.playlist.backend.user.User;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "playlist")
+@Getter
+@Builder
 public class Playlist {
 
     @Id
@@ -97,5 +104,18 @@ public class Playlist {
 
     public List<PlaylistLike> getLikes() {
         return likes;
+    }
+
+    // == 수정 메서드 == //
+    public void update(String title, String description, Boolean isPublic) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (description != null) {
+            this.description = description;
+        }
+        if (isPublic != null) {
+            this.isPublic = isPublic;
+        }
     }
 }

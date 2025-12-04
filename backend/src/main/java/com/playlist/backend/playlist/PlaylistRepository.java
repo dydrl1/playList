@@ -1,18 +1,15 @@
 package com.playlist.backend.playlist;
 
-import com.playlist.backend.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
 
-    // 특정 유저가 만든 플레이리스트 목록
-    List<Playlist> findByUser(User user);
+    // 내 플레이리스트들
+    List<Playlist> findAllByUserId(Long userId);
 
-    // userId 기준으로 조회
-    List<Playlist> findByUserId(Long userId);
-
-    // 공개 플레이리스트만 조회
-    List<Playlist> findByIsPublicTrue();
+    // 소유자 검증까지 포함해서 찾을 때
+    Optional<Playlist> findByIdAndUserId(Long id, Long userId);
 }
