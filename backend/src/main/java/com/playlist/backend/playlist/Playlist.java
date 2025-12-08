@@ -15,7 +15,7 @@ import java.util.List;
 @Entity
 @Table(name = "playlist")
 @Getter
-@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Playlist {
 
     @Id
@@ -42,12 +42,12 @@ public class Playlist {
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlaylistLike> likes = new ArrayList<>();
 
-    protected Playlist() {}
-
-    public Playlist(User user, String title, String description) {
+    @Builder
+    public Playlist(User user, String title, String description, boolean isPublic) {
         this.user = user;
         this.title = title;
         this.description = description;
+        this.isPublic = isPublic;
     }
 
     // =========================================

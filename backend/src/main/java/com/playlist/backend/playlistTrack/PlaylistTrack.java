@@ -3,11 +3,16 @@ package com.playlist.backend.playlistTrack;
 import com.playlist.backend.Track.Track;
 import com.playlist.backend.playlist.Playlist;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(
-        name = "PLAYLIST_TRACK",
+        name = "playlist_track",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_playlist_track",
@@ -15,29 +20,33 @@ import java.time.LocalDateTime;
                 )
         }
 )
-// 플레이리스트 안의 곡들 + 순서
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PlaylistTrack {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;   // PK
+    private Long id;
 
+    // 어떤 플레이리스트인지
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "playlist_id")
-    private Playlist playlist;   // 어떤 플레이리스트인지
+    @JoinColumn(name = "playlist_id", nullable = false)
+    private Playlist playlist;
 
+    // 어떤 곡인지
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "track_id")
-    private Track track;         // 어떤 곡인지
+    @JoinColumn(name = "track_id", nullable = false)
+    private Track track;
 
+    // 플레이리스트 내 순서
     @Column(nullable = false)
-    private Integer trackOrder;  // 플레이리스트 내 순서 (1,2,3...)
+    private Integer trackOrder;
 
+    @Column(nullable = false, updatable = false)
     private LocalDateTime addedAt;
 
-    protected PlaylistTrack() {
-    }
-
+    //  Builder 생성자 (Service에서 사용)
+    @Builder
     public PlaylistTrack(Playlist playlist, Track track, Integer trackOrder) {
         this.playlist = playlist;
         this.track = track;
@@ -45,37 +54,9 @@ public class PlaylistTrack {
         this.addedAt = LocalDateTime.now();
     }
 
-    // === getter / setter ===
+    // === 연관관계 편의 ===
 
-    public Long getId() {
-        return id;
-    }
-
-    public Playlist getPlaylist() {
-        return playlist;
-    }
-
-    public void setPlaylist(Playlist playlist) {
-        this.playlist = playlist;
-    }
-
-    public Track getTrack() {
-        return track;
-    }
-
-    public void setTrack(Track track) {
-        this.track = track;
-    }
-
-    public Integer getTrackOrder() {
-        return trackOrder;
-    }
-
-    public void setTrackOrder(Integer trackOrder) {
+    public void changeOrder(Integer trackOrder) {
         this.trackOrder = trackOrder;
-    }
-
-    public LocalDateTime getAddedAt() {
-        return addedAt;
     }
 }
