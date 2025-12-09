@@ -54,6 +54,14 @@ public class PlaylistTrack {
         this.addedAt = LocalDateTime.now();
     }
 
+    public void setTrackOrder(Integer trackOrder) {
+        this.trackOrder = trackOrder;
+    }
+
+    public void setPlaylist(Playlist playlist) {
+        this.playlist = playlist;
+    }
+
     // === 연관관계 편의 ===
 
     public void changeOrder(Integer trackOrder) {

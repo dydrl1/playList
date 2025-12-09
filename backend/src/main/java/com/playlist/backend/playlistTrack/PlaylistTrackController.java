@@ -2,6 +2,7 @@ package com.playlist.backend.playlistTrack;
 
 import com.playlist.backend.common.response.ApiResponse;
 import com.playlist.backend.playlistTrack.PlaylistTrackService;
+import com.playlist.backend.playlistTrack.dto.PlaylistTrackReorderRequest;
 import com.playlist.backend.playlistTrack.dto.PlaylistTrackResponse;
 import com.playlist.backend.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
@@ -61,5 +62,20 @@ public class PlaylistTrackController {
                 trackId
         );
         return ResponseEntity.ok(ApiResponse.success("트랙이 삭제되었습니다."));
+    }
+
+    // 트랙 순서 변경
+    @PutMapping("/order")
+    public ResponseEntity<ApiResponse<String>> reorderTracks(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long playlistId,
+            @RequestBody PlaylistTrackReorderRequest request
+    ){
+        playlistTrackService.reorderTracks(
+                userDetails.getId(),
+                playlistId,
+                request
+        );
+        return ResponseEntity.ok(ApiResponse.success("트랙 순서가 변경되었습니다."));
     }
 }

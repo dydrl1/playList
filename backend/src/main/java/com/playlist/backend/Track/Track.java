@@ -18,9 +18,9 @@ public class Track {
     private String artist;  // 아티스트
 
     @Column(length = 100)
-    private String album;   // 앨범명 (선택)
+    private String album;   // 앨범명
 
-    // 초 단위 재생 시간 (선택)
+    // 초 단위 재생 시간
     private Integer durationSec;
 
     // YOUTUBE / FILE / OTHER 등
@@ -99,4 +99,5 @@ public class Track {
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
+
 }

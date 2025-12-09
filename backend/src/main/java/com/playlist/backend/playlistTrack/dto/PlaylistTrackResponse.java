@@ -9,27 +9,32 @@ import lombok.Getter;
 @Builder
 public class PlaylistTrackResponse {
 
-    private Long id;
+    private Long playlistTrackId;
     private Long playlistId;
-    private String source;       // YOUTUBE / SPOTIFY 등
-    private String externalId;   // videoId / trackId
-    private String title;
-    private String artist;
-    private String thumbnailUrl;
-    private Long durationMs;
+    private Long trackId;
     private Integer trackOrder;
 
-    public static PlaylistTrackResponse from(PlaylistTrack track) {
+    private String title;
+    private String artist;
+    private String album;
+    private String sourceType;
+    private String sourceUrl;
+
+
+
+    public static PlaylistTrackResponse from(PlaylistTrack playlistTrack) {
+        var track = playlistTrack.getTrack();
+
         return PlaylistTrackResponse.builder()
-                .id(track.getId())
-                .playlistId(track.getPlaylist().getId())
-                .source(track.getSource())
-                .externalId(track.getExternalId())
+                .playlistTrackId(playlistTrack.getId())
+                .playlistId(playlistTrack.getPlaylist().getId())
+                .trackId(track.getId())
+                .trackOrder(playlistTrack.getTrackOrder())
                 .title(track.getTitle())
                 .artist(track.getArtist())
-                .thumbnailUrl(track.getThumbnailUrl())
-                .durationMs(track.getDurationMs())
-                .trackOrder(track.getTrackOrder())
+                .album(track.getAlbum())
+                .sourceType(track.getSourceType())
+                .sourceUrl(track.getSourceUrl())
                 .build();
     }
 }
