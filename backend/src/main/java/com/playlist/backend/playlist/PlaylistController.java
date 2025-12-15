@@ -2,6 +2,7 @@ package com.playlist.backend.playlist;
 
 import com.playlist.backend.common.response.ApiResponse;
 import com.playlist.backend.playlist.dto.PlaylistCreateRequest;
+import com.playlist.backend.playlist.dto.PlaylistDetailResponse;
 import com.playlist.backend.playlist.dto.PlaylistResponse;
 import com.playlist.backend.playlist.dto.PlaylistUpdateRequest;
 import com.playlist.backend.security.CustomUserDetails;
@@ -77,5 +78,13 @@ public class PlaylistController {
     ) {
         playlistService.deleteMyPlaylist(userDetails.getId(), playlistId);
         return ResponseEntity.ok(ApiResponse.success("플레이리스트가 삭제되었습니다."));
+    }
+
+    /**
+     *  상세보기
+     */
+    @GetMapping("/{playlistId}")
+    public PlaylistDetailResponse getPlaylistDetail(@PathVariable Long playlistId){
+        return playlistService.getDetail(playlistId, null);
     }
 }

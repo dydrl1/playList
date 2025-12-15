@@ -2,16 +2,20 @@ package com.playlist.backend.playlist;
 
 import com.playlist.backend.common.exception.BusinessException;
 import com.playlist.backend.common.exception.ErrorCode;
-import com.playlist.backend.playlist.dto.PlaylistCreateRequest;
+import com.playlist.backend.playlist.dto.*;
 import com.playlist.backend.playlist.dto.PlaylistResponse;
-import com.playlist.backend.playlist.dto.PlaylistUpdateRequest;
+import com.playlist.backend.playlistLike.PlaylistLike;
+import com.playlist.backend.playlistTrack.PlaylistTrack;
 import com.playlist.backend.user.User;
 import com.playlist.backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 @Service
 @RequiredArgsConstructor
@@ -115,5 +119,31 @@ public class PlaylistService {
         validateOwner(userId, playlist);
 
         playlistRepository.delete(playlist);
+    }
+
+
+    // @@@@@@@@@@@@@@@ 상세 보기 @@@@@@@@@@@@@
+    public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId){
+        Playlist playlist = playlistRepository.findDetailById(playlistId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
+
+        // 트랙 목록 (trackOrder 정렬)
+        List<TrackItemResponse> tracks = playlist.getPlaylistTracks().stream()
+                .sorted(Comparator.comparingInt(PlaylistTrack::getTrackOrder))
+                .map(TrackItemResponse::from)
+                .toList();
+
+        // 좋아요 수
+        int likeCount = playlist.getLikes() == null ? 0 : playlist.getLikes().size();
+
+        // 내가 좋아요 눌렀는지
+        boolean likedByMe = false;
+        if (loginUserId != null && playlist.getLikes() != null) {
+            likedByMe = playlist.getLikes().stream()
+                    .map(PlaylistLike::getUser)
+                    .anyMatch(u -> u.getId().equals(loginUserId));
+        }
+
+        return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks);
     }
 }
