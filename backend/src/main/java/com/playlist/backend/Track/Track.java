@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "TRACK") // 곡/트랙 정보
+@Table(name = "track") // 곡/트랙 정보
 public class Track {
 
     @Id
