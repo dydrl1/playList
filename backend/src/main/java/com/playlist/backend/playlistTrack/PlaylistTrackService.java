@@ -55,32 +55,27 @@ public class PlaylistTrackService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRACK_NOT_FOUND));
 
         // 이미 존재하는 트랙인지 체크
-        boolean exists = playlistTrackRepository.existsByPlaylistIdAndTrackId(playlistId, trackId);
-        if (exists) {
+        if (playlistTrackRepository.existsByPlaylistIdAndTrackId(playlistId, trackId)) {
             throw new BusinessException(ErrorCode.PLAYLIST_TRACK_ALREADY_EXISTS);
         }
 
-        // 현재 트랙들 순서 조회
-        List<PlaylistTrack> currentTracks =
-                playlistTrackRepository.findByPlaylistIdOrderByTrackOrderAsc(playlistId);
-
-        int size = currentTracks.size();
+        // 페이징을 위한 전체 목록 조회
+        long count = playlistTrackRepository.countByPlaylistId(playlistId);
+        int size = (int) count;
 
         // trackOrder 검증 (1 ~ size+1)
         if (trackOrder == null || trackOrder < 1 || trackOrder > size + 1) {
             throw new BusinessException(ErrorCode.PLAYLIST_TRACK_ORDER_INVALID);
         }
 
-        // 지정한 순서부터 뒤에 있는 애들 순서 +1
-        for (PlaylistTrack pt : currentTracks) {
-            if (pt.getTrackOrder() >= trackOrder) {
-                pt.setTrackOrder(pt.getTrackOrder() + 1);
-            }
-        }
+        // DB에서 한 방에 "뒤 트랙들" 순서 밀기
+        playlistTrackRepository.shiftOrdersForInsert(playlistId, trackOrder);
 
+        // insert
         PlaylistTrack newPlaylistTrack = new PlaylistTrack(playlist, track, trackOrder);
         playlistTrackRepository.save(newPlaylistTrack);
     }
+
 
     /**
      * 트랙 삭제
