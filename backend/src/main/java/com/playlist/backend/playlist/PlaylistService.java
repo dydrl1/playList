@@ -5,10 +5,13 @@ import com.playlist.backend.common.exception.ErrorCode;
 import com.playlist.backend.playlist.dto.*;
 import com.playlist.backend.playlist.dto.PlaylistResponse;
 import com.playlist.backend.playlistLike.PlaylistLike;
+import com.playlist.backend.playlistLike.PlaylistLikeRepository;
 import com.playlist.backend.playlistTrack.PlaylistTrack;
+import com.playlist.backend.playlistTrack.PlaylistTrackRepository;
 import com.playlist.backend.user.User;
 import com.playlist.backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +20,7 @@ import java.util.List;
 
 import static java.util.stream.Collectors.toList;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,6 +28,8 @@ public class PlaylistService {
 
     private final PlaylistRepository playlistRepository;
     private final UserRepository userRepository;
+    private final PlaylistTrackRepository playlistTrackRepository;
+    private final PlaylistLikeRepository playlistLikeRepository;
 
     // =========================================
     //  유틸 메서드 (검증용)
@@ -85,6 +91,7 @@ public class PlaylistService {
                 .description(request.getDescription())
                 .isPublic(isPublic)
                 .build();
+        log.info("createPlaylist userId={}", userId);
 
         Playlist saved = playlistRepository.save(playlist);
         return PlaylistResponse.from(saved);
@@ -123,27 +130,27 @@ public class PlaylistService {
 
 
     // @@@@@@@@@@@@@@@ 상세 보기 @@@@@@@@@@@@@
-    public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId){
-        Playlist playlist = playlistRepository.findDetailById(playlistId)
+    @Transactional(readOnly = true)
+    public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId) {
+
+        // 1) Playlist 기본 정보만 조회
+        Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
 
-        // 트랙 목록 (trackOrder 정렬)
-        List<TrackItemResponse> tracks = playlist.getPlaylistTracks().stream()
-                .sorted(Comparator.comparingInt(PlaylistTrack::getTrackOrder))
+        // 2) Tracks 조회 (track까지 한번에)
+        List<TrackItemResponse> tracks = playlistTrackRepository
+                .findAllWithTrackByPlaylistId(playlistId)
+                .stream()
                 .map(TrackItemResponse::from)
                 .toList();
 
-        // 좋아요 수
-        int likeCount = playlist.getLikes() == null ? 0 : playlist.getLikes().size();
+        // 3) Likes는 컬렉션 로딩 대신 count/exists
+        int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
 
-        // 내가 좋아요 눌렀는지
-        boolean likedByMe = false;
-        if (loginUserId != null && playlist.getLikes() != null) {
-            likedByMe = playlist.getLikes().stream()
-                    .map(PlaylistLike::getUser)
-                    .anyMatch(u -> u.getId().equals(loginUserId));
-        }
+        boolean likedByMe = (loginUserId != null)
+                && playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, loginUserId);
 
         return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks);
     }
+
 }

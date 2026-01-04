@@ -3,7 +3,7 @@ package com.playlist.backend.user;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "USER_TABLE")
+@Table(name = "user")
 public class User {
 
     @Id

@@ -11,4 +11,9 @@ public class UserProfileResponse {
     private Long id;
     private String name;
     private String email;
-}
+
+    @Builder
+    public UserProfileResponse(String name, String email) {
+        this.name = name;
+        this.email = email;
+    }}

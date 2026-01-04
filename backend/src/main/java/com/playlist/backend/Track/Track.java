@@ -4,7 +4,13 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "track") // 곡/트랙 정보
+@Table(
+        name="track",
+        uniqueConstraints = @UniqueConstraint(
+                name="uk_track_source",
+                columnNames = {"source_type", "source_id"}
+        ))
+// 곡/트랙 정보
 public class Track {
 
     @Id
@@ -22,6 +28,9 @@ public class Track {
 
     // 초 단위 재생 시간
     private Integer durationSec;
+
+    // spotify trackID, youtube videoID
+    private String sourceId;
 
     // YOUTUBE / FILE / OTHER 등
     @Column(length = 20)

@@ -17,6 +17,18 @@ public interface PlaylistTrackRepository extends JpaRepository<PlaylistTrack, Lo
     // playlistId 기준으로 순서대로 조회
     List<PlaylistTrack> findByPlaylistIdOrderByTrackOrderAsc(Long playlistId);
 
+    // 특정 플레이리스트의 트랙 목록 조회
+    @Query("""
+        select pt
+        from PlaylistTrack pt
+        join fetch pt.track t
+        where pt.playlist.id = :playlistId
+        order by pt.trackOrder asc
+    """)
+    List<PlaylistTrack> findAllWithTrackByPlaylistId(
+            @Param("playlistId") Long playlistId
+    );
+
     // 트랙 순서 밀기
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """
@@ -40,4 +52,8 @@ public interface PlaylistTrackRepository extends JpaRepository<PlaylistTrack, Lo
 
     // ✅ 특정 플레이리스트에서 특정 트랙 1개 조회
     Optional<PlaylistTrack> findByPlaylistIdAndTrackId(Long playlistId, Long trackId);
+
+    // 마지막 순서 조회
+    @Query("select coalesce(max(pt.trackOrder), 0) from PlaylistTrack pt where pt.playlist.id = :playlistId")
+    int findMaxOrder(@Param("playlistId") Long playlistId);
 }

@@ -22,14 +22,16 @@ public class UserService {
     }
 
     // - 프로필 수정
+    @Transactional
     public User updateProfile(Long userId, String newName){
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
         user.updateName(newName);
-        return user;
+        return userRepository.save(user);
     }
 
+    @Transactional
     // - 탈퇴 처리 ( 하드 삭제 )
     public void deleteUser(Long userId) {
         User user = userRepository.findById(userId)
