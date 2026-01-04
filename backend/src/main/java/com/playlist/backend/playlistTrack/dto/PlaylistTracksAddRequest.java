@@ -8,19 +8,24 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
-public class PlaylistAddTracksRequest {
+public class PlaylistTracksAddRequest {
 
     private List<TrackItem> tracks;
 
     @Getter
     @NoArgsConstructor
     public static class TrackItem {
-        private String source;       // "YOUTUBE" / "SPOTIFY"
-        private String externalId;   // YouTube videoId / Spotify trackId
+
+        // 외부 트랙 기본 정보 (검색 결과에서 넘어옴)
         private String title;
         private String artist;
-        private String thumbnailUrl;
-        private Long durationMs;
-        private Integer trackOrder;  // 재생 순서 (옵션)
+        private String album;
+        private Integer durationSec;
+
+        // 외부 소스 정보
+        private String sourceType; // SPOTIFY / YOUTUBE
+        private String sourceUrl;
+
+        private Integer trackOrder; // null이면 마지막에 붙이기
     }
 }

@@ -4,6 +4,7 @@ import com.playlist.backend.common.response.ApiResponse;
 import com.playlist.backend.playlistTrack.PlaylistTrackService;
 import com.playlist.backend.playlistTrack.dto.PlaylistTrackReorderRequest;
 import com.playlist.backend.playlistTrack.dto.PlaylistTrackResponse;
+import com.playlist.backend.playlistTrack.dto.PlaylistTracksAddRequest;
 import com.playlist.backend.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/playlists/me/{playlistId}/tracks")
+@RequestMapping("/playlists/{playlistId}/tracks")
 public class PlaylistTrackController {
 
     private final PlaylistTrackService playlistTrackService;
@@ -35,19 +36,13 @@ public class PlaylistTrackController {
     // 트랙 추가
     @PostMapping
     public ResponseEntity<ApiResponse<String>> addTrack(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long playlistId,
-            @RequestParam Long trackId,
-            @RequestParam Integer trackOrder
+            @RequestBody PlaylistTracksAddRequest request
     ) {
-        playlistTrackService.addTrack(
-                userDetails.getId(),
-                playlistId,
-                trackId,
-                trackOrder
-        );
-        return ResponseEntity.ok(ApiResponse.success("트랙이 추가되었습니다."));
+        playlistTrackService.addTracks(playlistId, request);
+        return ResponseEntity.ok(ApiResponse.success("트랙이 플레이리스트에 추가되었습니다."));
     }
+
 
     // 트랙 삭제
     @DeleteMapping("/{trackId}")

@@ -6,9 +6,9 @@ import com.playlist.backend.common.exception.BusinessException;
 import com.playlist.backend.common.exception.ErrorCode;
 import com.playlist.backend.playlist.Playlist;
 import com.playlist.backend.playlist.PlaylistRepository;
+import com.playlist.backend.playlistTrack.dto.PlaylistTracksAddRequest;
 import com.playlist.backend.playlistTrack.dto.PlaylistTrackReorderRequest;
 import com.playlist.backend.playlistTrack.dto.PlaylistTrackResponse;
-import com.playlist.backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,32 +48,52 @@ public class PlaylistTrackService {
      * 트랙 추가
      */
     @Transactional
-    public void addTrack(Long userId, Long playlistId, Long trackId, Integer trackOrder) {
-        Playlist playlist = getOwnedPlaylistOrThrow(userId, playlistId);
+    public void addTracks(Long playlistId, PlaylistTracksAddRequest req) {
 
-        Track track = trackRepository.findById(trackId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TRACK_NOT_FOUND));
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
 
-        // 이미 존재하는 트랙인지 체크
-        if (playlistTrackRepository.existsByPlaylistIdAndTrackId(playlistId, trackId)) {
-            throw new BusinessException(ErrorCode.PLAYLIST_TRACK_ALREADY_EXISTS);
+        if (req.getTracks() == null || req.getTracks().isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST); // 적절한 코드로 교체
         }
 
-        // 페이징을 위한 전체 목록 조회
-        long count = playlistTrackRepository.countByPlaylistId(playlistId);
-        int size = (int) count;
+        for (PlaylistTracksAddRequest.TrackItem item : req.getTracks()) {
 
-        // trackOrder 검증 (1 ~ size+1)
-        if (trackOrder == null || trackOrder < 1 || trackOrder > size + 1) {
-            throw new BusinessException(ErrorCode.PLAYLIST_TRACK_ORDER_INVALID);
+            String sourceType = item.getSourceType();
+            String sourceUrl  = item.getSourceUrl();
+
+            Track track = trackRepository.findBySourceTypeAndSourceUrl(sourceType, sourceUrl)
+                    .orElseGet(() -> {
+                        Track t = new Track(item.getTitle(), item.getArtist());
+                        t.setAlbum(item.getAlbum());
+                        t.setDurationSec(item.getDurationSec());
+                        t.setSourceType(sourceType);
+                        t.setSourceUrl(sourceUrl);
+                        return trackRepository.save(t);
+                    });
+
+            // 중복 방지
+            if (playlistTrackRepository.existsByPlaylistIdAndTrackId(playlistId, track.getId())) {
+                continue; // 또는 예외 처리
+            }
+
+            // 순서: null이면 마지막
+            int order;
+            if (item.getTrackOrder() == null) {
+                order = playlistTrackRepository.findMaxOrder(playlistId) + 1;
+            } else {
+                order = item.getTrackOrder();
+                // (선택) 중간 삽입이면 뒤 트랙 order 밀기 로직 필요
+            }
+
+            playlistTrackRepository.save(
+                    PlaylistTrack.builder()
+                            .playlist(playlist)
+                            .track(track)
+                            .trackOrder(order)
+                            .build()
+            );
         }
-
-        // DB에서 한 방에 "뒤 트랙들" 순서 밀기
-        playlistTrackRepository.shiftOrdersForInsert(playlistId, trackOrder);
-
-        // insert
-        PlaylistTrack newPlaylistTrack = new PlaylistTrack(playlist, track, trackOrder);
-        playlistTrackRepository.save(newPlaylistTrack);
     }
 
 

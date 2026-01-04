@@ -1,5 +1,6 @@
 package com.playlist.backend.playlist;
 
+import com.playlist.backend.playlistTrack.PlaylistTrack;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,12 +17,13 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
     Optional<Playlist> findByIdAndUserId(Long id, Long userId);
 
     @Query("""
-        select distinct p
-        from Playlist p
-        left join fetch p.playlistTracks pt
-        left join fetch pt.track t
-        left join fetch p.likes l
-        where p.id = :playlistId
+        select pt
+        from PlaylistTrack pt
+        join fetch pt.track t
+        where pt.playlist.id = :playlistId
+        order by pt.trackOrder asc
     """)
-    Optional<Playlist> findDetailById(@Param("playlistId") Long playlistId);
+    List<PlaylistTrack> findAllWithTrackByPlaylistId(@Param("playlistId") Long playlistId);
+
+
 }
