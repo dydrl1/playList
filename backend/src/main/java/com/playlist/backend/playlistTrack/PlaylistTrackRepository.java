@@ -47,13 +47,23 @@ public interface PlaylistTrackRepository extends JpaRepository<PlaylistTrack, Lo
     // 특정 플레이리스트에서 특정 트랙만 삭제
     void deleteByPlaylistIdAndTrackId(Long playlistId, Long trackId);
 
-    // ✅ 해당 플레이리스트에 이 트랙이 이미 존재하는지 체크
+    //  해당 플레이리스트에 이 트랙이 이미 존재하는지 체크
     boolean existsByPlaylistIdAndTrackId(Long playlistId, Long trackId);
 
-    // ✅ 특정 플레이리스트에서 특정 트랙 1개 조회
+    //  특정 플레이리스트에서 특정 트랙 1개 조회
     Optional<PlaylistTrack> findByPlaylistIdAndTrackId(Long playlistId, Long trackId);
 
     // 마지막 순서 조회
     @Query("select coalesce(max(pt.trackOrder), 0) from PlaylistTrack pt where pt.playlist.id = :playlistId")
     int findMaxOrder(@Param("playlistId") Long playlistId);
+
+    @Query("""
+    select pt
+    from PlaylistTrack pt
+    join fetch pt.track
+    where pt.playlist.id = :playlistId
+    order by pt.trackOrder asc
+""")
+    List<PlaylistTrack> findQueueByPlaylistId(@Param("playlistId") Long playlistId);
+
 }
