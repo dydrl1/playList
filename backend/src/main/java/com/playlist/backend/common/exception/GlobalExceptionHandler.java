@@ -1,9 +1,12 @@
 package com.playlist.backend.common.exception;
 
 import com.playlist.backend.common.response.ErrorResponse;
+import com.playlist.backend.integration.exception.ExternalApiQuotaExceededException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
@@ -49,5 +52,13 @@ public class GlobalExceptionHandler {
         // TODO: 로그 추가 (log.error 등)
         ex.printStackTrace();
         return buildResponse(ErrorCode.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(ExternalApiQuotaExceededException.class)
+    public ResponseEntity<ErrorResponse> handleYoutubeQuota(ExternalApiQuotaExceededException e) {
+        ErrorCode errorCode = ErrorCode.YOUTUBE_QUOTA_EXCEEDED;
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.from(errorCode));
     }
 }

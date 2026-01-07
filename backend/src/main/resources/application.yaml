@@ -28,3 +28,7 @@ logging:
 jwt:
   secret: "dGhpcy1pcy1teS1zdXBlci1zZWNyZXQta2V5LTEyMzQ1Ng=="
   access-token-expiration: 3600000
+
+youtube:
+  api-key: ${YOUTUBE_API_KEY}
+  base-url: https://www.googleapis.com/youtube/v3
