@@ -33,7 +33,10 @@ public enum ErrorCode {
     // 500
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S001", "서버 내부 오류입니다."),
     EXTERNAL_API_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S002", "외부 서비스 연동 중 오류가 발생했습니다."),
-    INVALID_REQUEST(HttpStatus.BAD_REQUEST,"S003","잘못된 요청입니다.");
+    INVALID_REQUEST(HttpStatus.BAD_REQUEST,"S003","잘못된 요청입니다."),
+
+    YOUTUBE_QUOTA_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "YOUTUBE_429","현재 유튜브 검색 요청이 많아 잠시 후 다시 시도해 주세요.");
+
 
 
     private final HttpStatus status;
