@@ -24,8 +24,10 @@ public class YouTubeVideosResponse {
     @Setter
     public static class Snippet {
         private String title;
+        private String description;
         private String channelTitle;
         private Thumbnails thumbnails;
+
     }
 
     @Getter

@@ -23,6 +23,7 @@ public class CustomUserDetails implements UserDetails {
         return user.getName();
     }
 
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         // 나중에 role 컬럼 있으면 여기서 변환
