@@ -67,4 +67,13 @@ public class PlaylistTrack {
     public void changeOrder(Integer trackOrder) {
         this.trackOrder = trackOrder;
     }
+
+    public static PlaylistTrack create(Playlist playlist, Track track, int order) {
+        PlaylistTrack pt = new PlaylistTrack();
+        pt.playlist = playlist;
+        pt.track = track;
+        pt.trackOrder = order;
+        pt.addedAt = LocalDateTime.now();
+        return pt;
+    }
 }

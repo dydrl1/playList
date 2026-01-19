@@ -1,6 +1,8 @@
 package com.playlist.backend.Track;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -109,4 +111,8 @@ public class Track {
         return createdAt;
     }
 
-}
+    public void setSourceId(String sourceId) {
+        this.sourceId = sourceId;
+    }
+    }
+
