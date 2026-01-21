@@ -12,13 +12,16 @@ public class PlaylistResponse {
     private String title;
     private String description;
     private boolean isPublic;
+    private int likeCount;
 
-    public static PlaylistResponse from(Playlist playlist){
+
+    public static PlaylistResponse from(Playlist playlist, int likeCount) {
         return PlaylistResponse.builder()
                 .id(playlist.getId())
                 .title(playlist.getTitle())
                 .description(playlist.getDescription())
                 .isPublic(playlist.isPublic())
+                .likeCount(likeCount)
                 .build();
     }
 }

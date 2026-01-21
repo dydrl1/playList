@@ -35,6 +35,9 @@ public class Playlist {
     @Column(nullable = false)
     private boolean isPublic = true;
 
+    @Column(nullable = false)
+    private long viewCount = 0L;
+
     // 양방향 매핑 (읽기 전용)
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlaylistTrack> playlistTracks = new ArrayList<>();

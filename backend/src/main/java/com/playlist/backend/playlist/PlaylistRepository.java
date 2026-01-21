@@ -2,6 +2,7 @@ package com.playlist.backend.playlist;
 
 import com.playlist.backend.playlistTrack.PlaylistTrack;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +25,11 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
         order by pt.trackOrder asc
     """)
     List<PlaylistTrack> findAllWithTrackByPlaylistId(@Param("playlistId") Long playlistId);
+
+    // 조회수 증가 쿼리
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Playlist p set p.viewCount = p.viewCount + 1 where p.id = :playlistId")
+    int increaseViewCount(@Param("playlistId") Long playlistId);
 
 
 }

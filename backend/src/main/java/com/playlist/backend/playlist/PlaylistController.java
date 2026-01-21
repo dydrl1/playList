@@ -42,7 +42,10 @@ public class PlaylistController {
             @PathVariable Long playlistId
     ) {
         Long loginUserId = (userDetails != null) ? userDetails.getId() : null;
+
+        playlistService.increaseUniqueView(playlistId, loginUserId);
         PlaylistDetailResponse result = playlistService.getDetail(playlistId, loginUserId);
+
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -91,4 +94,23 @@ public class PlaylistController {
 //    public PlaylistDetailResponse getPlaylistDetail(@PathVariable Long playlistId){
 //        return playlistService.getDetail(playlistId, null);
 //    }
+
+    @PostMapping("{playlistId}/likes")
+    public ResponseEntity<Void> like(
+            @PathVariable Long playlistId,
+            @AuthenticationPrincipal CustomUserDetails user
+    ){
+        playlistService.like(user.getId(), playlistId);
+        return ResponseEntity.noContent().build();
+    }
+
+
+    @DeleteMapping("{playlistId}/unlikes")
+    public ResponseEntity<Void> unlike(
+            @PathVariable Long playlistId,
+            @AuthenticationPrincipal CustomUserDetails user
+    ){
+        playlistService.unlike(user.getId(), playlistId);
+        return ResponseEntity.noContent().build();
+    }
 }

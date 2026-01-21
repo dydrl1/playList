@@ -26,11 +26,15 @@ public class PlaylistLike {
     @JoinColumn(name = "user_id")
     private User user;        // 좋아요 누른 유저
 
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "playlist_id")
     private Playlist playlist;  // 좋아요 대상 플레이리스트
 
+
     private LocalDateTime createdAt;
+
+
 
     protected PlaylistLike() {
     }
