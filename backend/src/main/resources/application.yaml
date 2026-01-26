@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:mariadb://localhost:3306/playlist_db?serverTimezone=Asia/Seoul&characterEncoding=utf8
     username: myapp_user
-    password: ""
+    password: ${DB_PASSWORD}
     driver-class-name: org.mariadb.jdbc.Driver
 
   jpa:
@@ -22,8 +22,8 @@ spring:
 
   data:
     redis:
-      host:localhost
-      port:6379
+      host: localhost
+      port: 6379
 
 logging:
   level:
@@ -31,7 +31,7 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: trace
 
 jwt:
-  secret: "dGhpcy1pcy1teS1zdXBlci1zZWNyZXQta2V5LTEyMzQ1Ng=="
+  secret: ${JWT_SECRET}
   access-token-expiration: 3600000
 
 youtube:

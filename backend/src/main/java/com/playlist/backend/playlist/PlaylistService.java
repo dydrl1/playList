@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
@@ -57,13 +58,14 @@ public class PlaylistService {
     }
 
     // =========================================
-    //  내 플레이리스트 전체 조회
+    //  내 플레이리스트 전체 조회 (좋아요 집계 1쿼리 + 정렬 정책 명시)
     // =========================================
     @Transactional(readOnly = true)
     public List<PlaylistResponse> getMyPlaylists(Long userId) {
         User owner = getUserOrThrow(userId);
 
-        List<Playlist> playlists = playlistRepository.findAllByUserId(owner.getId());
+        // 정렬 정책 명시(최신순) Repository 메서드 추가 필요 (아래 참고)
+        List<Playlist> playlists = playlistRepository.findAllByUserIdOrderByIdDesc(owner.getId());
 
         // 플레이리스트가 없으면 바로 반환
         if (playlists.isEmpty()) {
@@ -75,9 +77,9 @@ public class PlaylistService {
                 .map(Playlist::getId)
                 .toList();
 
-        // 2) 좋아요 수 집계 1번 쿼리
+        // 좋아요 집계 1번 쿼리
         Map<Long, Integer> likeCountMap = playlistLikeRepository.countGroupByPlaylistIds(ids).stream()
-                .collect(java.util.stream.Collectors.toMap(
+                .collect(Collectors.toMap(
                         PlaylistLikeCountRow::getPlaylistId,
                         row -> row.getCnt().intValue()
                 ));
@@ -160,23 +162,26 @@ public class PlaylistService {
     }
 
 
-    // @@@@@@@@@@@@@@@ 상세 보기 @@@@@@@@@@@@@
+    // =========================================
+    //  플레이리스트 상세 보기
+    // =========================================
     @Transactional
     public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId) {
-
         Playlist playlist = playlistRepository.findById(playlistId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
 
+        // 트랙: fetch join(또는 entity graph)로 1 쿼리
         List<TrackItemResponse> tracks = playlistTrackRepository
-                .findAllWithTrackByPlaylistId(playlistId)
+                .findQueueByPlaylistId(playlistId)
                 .stream()
                 .map(TrackItemResponse::from)
                 .toList();
-
+        // 좋아요 수 : count 1쿼리
         int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
 
+        // LikeByMe: exists 1쿼리
         boolean likedByMe = (loginUserId != null)
-                && playlistLikeRepository.existsByPlaylistIdAndUserId(loginUserId, playlistId);
+                && playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, loginUserId);
 
         return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks);
     }
@@ -199,28 +204,30 @@ public class PlaylistService {
 
 
     // 좋아요 누르기
-    public void like(Long userId, Long playlistId){
-        if(playlistLikeRepository.existsByPlaylistIdAndUserId(userId, playlistId)){
-            // 멱등 처리: 그냥 return
+    public void like(Long userId, Long playlistId) {
+        // 존재 검증(없으면 명확한 에러)
+        User user = getUserOrThrow(userId);
+        Playlist playlist = getPlaylistOrThrow(playlistId);
+
+        // 멱등
+        if (playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, userId)) {
             return;
         }
-
-        User user = userRepository.getReferenceById(userId);
-        Playlist playlist = playlistRepository.getReferenceById(playlistId);
 
         playlistLikeRepository.save(new PlaylistLike(user, playlist));
     }
 
     // 좋아요 취소
-    public void unlike(Long userId, Long playlistId){
+    public void unlike(Long userId, Long playlistId) {
+        // 존재 검증(없으면 명확한 에러)
+        getUserOrThrow(userId);
+        getPlaylistOrThrow(playlistId);
+
         PlaylistLike like = playlistLikeRepository
                 .findByUserIdAndPlaylistId(userId, playlistId)
                 .orElse(null);
 
-        if (like==null){
-            // 멱등처리
-            return;
-        }
+        if (like == null) return; // 멱등
         playlistLikeRepository.delete(like);
     }
 
