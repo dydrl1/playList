@@ -1,6 +1,7 @@
 package com.playlist.backend.playlistTrack;
 
 import com.playlist.backend.playlist.Playlist;
+import com.playlist.backend.playlistLike.PlaylistLikeCountRow;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -66,4 +67,12 @@ public interface PlaylistTrackRepository extends JpaRepository<PlaylistTrack, Lo
 """)
     List<PlaylistTrack> findQueueByPlaylistId(@Param("playlistId") Long playlistId);
 
+    // 리스트용 좋아요 집계 (ids IN (...) group by)
+    @Query("""
+        select pl.playlist.id as playlistId, count(pl.id) as cnt
+        from PlaylistLike pl
+        where pl.playlist.id in :playlistIds
+        group by pl.playlist.id
+    """)
+    List<PlaylistLikeCountRow> countGroupByPlaylistIds(@Param("playlistIds") List<Long> playlistIds);
 }

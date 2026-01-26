@@ -26,6 +26,9 @@ public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
     """)
     List<PlaylistTrack> findAllWithTrackByPlaylistId(@Param("playlistId") Long playlistId);
 
+    // 내 플레이리스트 최신순 조회
+    List<Playlist> findAllByUserIdOrderByIdDesc(Long userId);
+
     // 조회수 증가 쿼리
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Playlist p set p.viewCount = p.viewCount + 1 where p.id = :playlistId")
