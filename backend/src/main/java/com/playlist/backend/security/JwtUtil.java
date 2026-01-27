@@ -28,8 +28,7 @@ public class JwtUtil {
             @Value("${jwt.access-token-expiration}") long accessTokenExpirationMillis,
             UserDetailsService userDetailsService
     ) {
-        // Base64 설정
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = secretKey.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenExpirationMillis = accessTokenExpirationMillis;
         this.userDetailsService = userDetailsService;

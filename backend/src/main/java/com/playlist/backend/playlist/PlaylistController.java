@@ -1,13 +1,13 @@
 package com.playlist.backend.playlist;
 
 import com.playlist.backend.common.response.ApiResponse;
-import com.playlist.backend.playlist.dto.PlaylistCreateRequest;
-import com.playlist.backend.playlist.dto.PlaylistDetailResponse;
-import com.playlist.backend.playlist.dto.PlaylistResponse;
-import com.playlist.backend.playlist.dto.PlaylistUpdateRequest;
+import com.playlist.backend.playlist.dto.*;
 import com.playlist.backend.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +16,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/playlists")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class PlaylistController {
 
@@ -25,34 +25,17 @@ public class PlaylistController {
     /**
      * 내 플레이리스트 목록 조회
      */
-    @GetMapping("/me")
+    @GetMapping("/me/playlists")
     public ResponseEntity<ApiResponse<List<PlaylistResponse>>> getMyPlaylists(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         List<PlaylistResponse> result = playlistService.getMyPlaylists(userDetails.getId());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
-
-    /**
-     *  내 플레이리스트 상세 조회
-     */
-    @GetMapping("/{playlistId}")
-    public ResponseEntity<ApiResponse<PlaylistDetailResponse>> getPlaylistDetail(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @PathVariable Long playlistId
-    ) {
-        Long loginUserId = (userDetails != null) ? userDetails.getId() : null;
-
-        playlistService.increaseUniqueView(playlistId, loginUserId);
-        PlaylistDetailResponse result = playlistService.getDetail(playlistId, loginUserId);
-
-        return ResponseEntity.ok(ApiResponse.success(result));
-    }
-
     /**
      *  플레이리스트 생성
      */
-    @PostMapping("/me")
+    @PostMapping("/me/playlists")
     public ResponseEntity<ApiResponse<PlaylistResponse>> createPlaylist(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody PlaylistCreateRequest request
@@ -65,7 +48,7 @@ public class PlaylistController {
     /**
      *  플레이리스트 수정
      */
-    @PatchMapping("/me/{playlistId}")
+    @PatchMapping("/me/playlists/{playlistId}")
     public ResponseEntity<ApiResponse<PlaylistResponse>> updateMyPlaylist(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long playlistId,
@@ -78,7 +61,7 @@ public class PlaylistController {
     /**
      *  플레이리스트 삭제
      */
-    @DeleteMapping("/me/{playlistId}")
+    @DeleteMapping("/me/playlists/{playlistId}")
     public ResponseEntity<ApiResponse<String>> deleteMyPlaylist(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long playlistId
@@ -87,14 +70,54 @@ public class PlaylistController {
         return ResponseEntity.ok(ApiResponse.success("플레이리스트가 삭제되었습니다."));
     }
 
-//    /**
-//     *  상세보기
-//     */
-//    @GetMapping("/{playlistId}")
-//    public PlaylistDetailResponse getPlaylistDetail(@PathVariable Long playlistId){
-//        return playlistService.getDetail(playlistId, null);
-//    }
 
+    // =========================
+    // 공개 영역 (목록/상세)
+    // =========================
+
+    /**
+     * 공개 플레이리스트 목록 조회 (로그인/비로그인 모두 가능)
+     * GET /api/playlists?sort=LATEST|VIEW|LIKE&page=0&size=20
+     */
+    @GetMapping("/playlists")
+    public ResponseEntity<ApiResponse<Page<PlaylistResponse>>> getPublicPlaylists(
+            @RequestParam(defaultValue = "LATEST") PublicPlaylistSort sort,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        Page<PlaylistResponse> page = switch (sort){
+            case LIKE -> playlistService.getPublicPlaylistsOrderByLike(pageable);
+            case VIEW, LATEST -> playlistService.getPublicPlaylists(sort,pageable);
+        };
+
+        return ResponseEntity.ok(ApiResponse.success(page));
+    }
+
+
+    /**
+     * 플레이리스트 상세 조회
+     * - 공개: 로그인/비로그인 모두 가능
+     * - 비공개: 오너만 가능
+     */
+    @GetMapping("/playlists/{playlistId}")
+    public ResponseEntity<ApiResponse<PlaylistDetailResponse>> getPlaylistDetail(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long playlistId
+    ) {
+        Long loginUserId = (userDetails != null) ? userDetails.getId() : null;
+
+        // 1) 접근 제어 포함된 상세 조회 (여기서 비공개면 예외)
+        PlaylistDetailResponse result = playlistService.getDetail(playlistId, loginUserId);
+
+        // 2) 조회 성공한 경우에만 조회수 증가
+        playlistService.increaseUniqueView(playlistId, loginUserId);
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+
+    /**
+     *  플레이리스트 좋아요
+     */
     @PostMapping("{playlistId}/likes")
     public ResponseEntity<Void> like(
             @PathVariable Long playlistId,
@@ -104,6 +127,10 @@ public class PlaylistController {
         return ResponseEntity.noContent().build();
     }
 
+
+    /**
+     *  플레이리스트 좋아요 취소
+     */
 
     @DeleteMapping("{playlistId}/unlikes")
     public ResponseEntity<Void> unlike(

@@ -1,7 +1,7 @@
 spring:
   datasource:
     url: jdbc:mysql://localhost:3306/playlist
-    username: root
+    username: myapp_user
     password: myapp1234   # 실제 값은 로컬 파일에서만
   data:
     redis:
