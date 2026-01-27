@@ -13,6 +13,8 @@ import com.playlist.backend.user.User;
 import com.playlist.backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,18 +94,18 @@ public class PlaylistService {
 
 
 
-    // =========================================
-    //  내 플레이리스트 단건 조회
-    // =========================================
-    @Transactional(readOnly = true)
-    public PlaylistResponse getMyPlaylist(Long userId, Long playlistId) {
-        Playlist playlist = getPlaylistOrThrow(playlistId);
-        validateOwner(userId, playlist);
-
-        int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
-
-        return PlaylistResponse.from(playlist, likeCount);
-    }
+//    // =========================================
+//    //  내 플레이리스트 단건 조회
+//    // =========================================
+//    @Transactional(readOnly = true)
+//    public PlaylistResponse getMyPlaylist(Long userId, Long playlistId) {
+//        Playlist playlist = getPlaylistOrThrow(playlistId);
+//        validateOwner(userId, playlist);
+//
+//        int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
+//
+//        return PlaylistResponse.from(playlist, likeCount);
+//    }
 
     // =========================================
     //  플레이리스트 생성
@@ -167,8 +169,15 @@ public class PlaylistService {
     // =========================================
     @Transactional
     public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId) {
-        Playlist playlist = playlistRepository.findById(playlistId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
+        Playlist playlist = getPlaylistOrThrow(playlistId);
+
+        // 비공개 접근 제어
+        if(!playlist.isPublic()){
+            if(loginUserId == null){
+                throw new BusinessException(ErrorCode.PLAYLIST_PRIVATE);
+            }
+            validateOwner(loginUserId, playlist);
+        }
 
         // 트랙: fetch join(또는 entity graph)로 1 쿼리
         List<TrackItemResponse> tracks = playlistTrackRepository
@@ -186,21 +195,76 @@ public class PlaylistService {
         return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks);
     }
 
+    // 최신/조회순 전체 보기
+    @Transactional(readOnly = true)
+    public Page<PlaylistResponse> getPublicPlaylists(PublicPlaylistSort sort, Pageable pageable) {
+
+        // 1) sort에 따라 repository 메서드 선택
+        Page<Playlist> page = switch (sort) {
+            case VIEW -> playlistRepository.findByIsPublicTrueOrderByViewCountDescIdDesc(pageable);
+            case LATEST -> playlistRepository.findByIsPublicTrueOrderByIdDesc(pageable);
+            default -> throw new BusinessException(ErrorCode.INVALID_REQUEST);
+        };
+
+        if (page.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        // 2) ids 추출
+        List<Long> ids = page.getContent().stream().map(Playlist::getId).toList();
+
+        // 3) 좋아요 집계 1쿼리
+        Map<Long, Integer> likeCountMap = playlistLikeRepository.countGroupByPlaylistIds(ids).stream()
+                .collect(Collectors.toMap(
+                        PlaylistLikeCountRow::getPlaylistId,
+                        row -> row.getCnt().intValue()
+                ));
+
+        // 4) DTO 매핑
+        return page.map(p -> PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0)));
+    }
+
+
+    // 좋아요 순 전체보기
+    @Transactional(readOnly = true)
+    public Page<PlaylistResponse> getPublicPlaylistsOrderByLike(Pageable pageable) {
+        var page = playlistRepository.findPublicOrderByLikeCountDesc(pageable);
+        if (page.isEmpty()) return Page.empty(pageable);
+
+        List<Long> ids = page.getContent().stream().map(Playlist::getId).toList();
+
+        Map<Long, Integer> likeCountMap = playlistLikeRepository.countGroupByPlaylistIds(ids).stream()
+                .collect(Collectors.toMap(
+                        PlaylistLikeCountRow::getPlaylistId,
+                        row -> row.getCnt().intValue()
+                ));
+
+        return page.map(p -> PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0)));
+    }
+
+
 
     // 로그인 유저 기준 24시간 유니크 조회수
     @Transactional
     public void increaseUniqueView(Long playlistId, Long loginUserId) {
-        if (loginUserId == null) return; // 로그인 유저만 유니크 조회수
+        if (loginUserId == null) return;
 
-        String key = "view:playlist:" + playlistId + ":user:" + loginUserId;
+        try {
+            String key = "view:playlist:" + playlistId + ":user:" + loginUserId;
 
-        Boolean first = stringRedisTemplate.opsForValue()
-                .setIfAbsent(key, "1", Duration.ofHours(24));
+            Boolean first = stringRedisTemplate.opsForValue()
+                    .setIfAbsent(key, "1", Duration.ofHours(24));
 
-        if (Boolean.TRUE.equals(first)) {
-            playlistRepository.increaseViewCount(playlistId);
+            if (Boolean.TRUE.equals(first)) {
+                playlistRepository.increaseViewCount(playlistId);
+            }
+        } catch (Exception e) {
+            // Redis가 꺼져있으면 조회수 기능만 비활성화 (서버는 정상 동작)
+            log.warn("Redis unavailable. Skip unique view. playlistId={}, userId={}", playlistId, loginUserId);
         }
     }
+
+
 
 
     // 좋아요 누르기

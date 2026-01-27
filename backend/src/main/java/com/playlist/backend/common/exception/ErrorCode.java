@@ -23,6 +23,7 @@ public enum ErrorCode {
     PLAYLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 플레이리스트입니다."),
     TRACK_NOT_FOUND(HttpStatus.NOT_FOUND, "T001", "존재하지 않는 트랙입니다."),
     PLAYLIST_TRACK_NOT_FOUND(HttpStatus.NOT_FOUND, "PT003", "존재하지 않는 플레이리스트 트랙입니다."),
+    PLAYLIST_PRIVATE(HttpStatus.FORBIDDEN, "P002", "비공개 플레이리스트입니다."),
 
 
     // 409
