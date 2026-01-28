@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -26,7 +27,8 @@ public class JwtTokenProvider {
             UserDetailsService userDetailsService
     ) {
         // secret 문자열을 Key로 변환
-        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        Key key = Keys.hmacShaKeyFor(keyBytes);
         this.key = Keys.hmacShaKeyFor(keyBytes);
         this.accessTokenExpirationMillis = accessTokenExpirationMillis;
         this.userDetailsService = userDetailsService;

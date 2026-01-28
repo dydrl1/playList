@@ -2,17 +2,19 @@ package com.playlist.backend.common.exception;
 
 import com.playlist.backend.common.response.ErrorResponse;
 import com.playlist.backend.integration.exception.ExternalApiQuotaExceededException;
-import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.util.List;
+
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    //  공통 응답 생성 함수 (핵심 “함수화” 부분)
     private ResponseEntity<ErrorResponse> buildResponse(ErrorCode errorCode) {
         return ResponseEntity
                 .status(errorCode.getStatus())
@@ -25,40 +27,56 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(errorCode, overrideMessage));
     }
 
-    // 1) 비즈니스 예외 (커스텀)
+    // fieldErrors 포함 버전 추가
+    private ResponseEntity<ErrorResponse> buildResponse(ErrorCode errorCode, List<ErrorResponse.FieldErrorDetail> fieldErrors) {
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ErrorResponse.of(errorCode, fieldErrors));
+    }
+
+    // 1) 비즈니스 예외
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex) {
         ErrorCode errorCode = ex.getErrorCode();
-        // detailMessage를 사용해서 덮어쓰기
+        // 너가 detailMessage로 덮어쓰는 전략 유지
         return buildResponse(errorCode, ex.getMessage());
     }
 
-    // 2) @Valid 유효성 검증 실패
+    // 2) @Valid 유효성 검증 실패 (DTO)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-        String message = ex.getBindingResult()
+
+        List<ErrorResponse.FieldErrorDetail> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .findFirst()
-                .map(error -> error.getField() + " : " + error.getDefaultMessage())
-                .orElse("유효성 검증에 실패했습니다.");
+                .map(err -> new ErrorResponse.FieldErrorDetail(
+                        err.getField(),
+                        err.getDefaultMessage()
+                ))
+                .toList();
 
-        return buildResponse(ErrorCode.INVALID_INPUT_VALUE, message);
+        // 공통 코드/메시지는 INVALID_INPUT_VALUE로 통일 + 상세는 fieldErrors
+        return buildResponse(ErrorCode.INVALID_INPUT_VALUE, fieldErrors);
+    }
+
+    // (추천) JSON 파싱 실패/타입 불일치도 입력값 오류로 통일
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+        return buildResponse(ErrorCode.INVALID_INPUT_VALUE);
     }
 
     // 3) 그 외 예상치 못한 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception ex) {
-        // TODO: 로그 추가 (log.error 등)
-        ex.printStackTrace();
+        log.error("Unexpected exception occurred", ex);
         return buildResponse(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 
+    // 4) 유튜브 쿼터
     @ExceptionHandler(ExternalApiQuotaExceededException.class)
     public ResponseEntity<ErrorResponse> handleYoutubeQuota(ExternalApiQuotaExceededException e) {
-        ErrorCode errorCode = ErrorCode.YOUTUBE_QUOTA_EXCEEDED;
-        return ResponseEntity
-                .status(errorCode.getStatus())
-                .body(ErrorResponse.from(errorCode));
+        return buildResponse(ErrorCode.YOUTUBE_QUOTA_EXCEEDED);
     }
 }
+
+

@@ -5,6 +5,10 @@ import com.playlist.backend.Track.dto.TrackResponse;
 import com.playlist.backend.Track.dto.TrackUpdateRequest;
 import com.playlist.backend.common.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,12 +23,11 @@ public class TrackController {
 
     // 목록 조회 (+ 검색)
     @GetMapping
-    public ResponseEntity<ApiResponse<List<TrackResponse>>> getTracks(
-            @RequestParam(required = false) String keyword
+    public Page<TrackResponse> getTracks(
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return ResponseEntity.ok(
-                ApiResponse.success(trackService.getTracks(keyword))
-        );
+        return trackService.getTracks(keyword, pageable);
     }
 
     // 단건 조회

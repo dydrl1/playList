@@ -6,6 +6,8 @@ import com.playlist.backend.Track.dto.TrackUpdateRequest;
 import com.playlist.backend.common.exception.BusinessException;
 import com.playlist.backend.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,27 +20,59 @@ public class TrackService {
 
     private final TrackRepository trackRepository;
 
+
+    /**
+     * =========================================
+     *  트랙 단건 조회 (상세 조회)
+     * =========================================
+     * - 트랙 ID(PK) 기반 조회
+     * - 존재하지 않을 경우 TRACK_NOT_FOUND 발생
+     */
     public TrackResponse getTrack(Long trackId){
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRACK_NOT_FOUND));
         return TrackResponse.from(track);
     }
 
-    public List<TrackResponse> getTracks(String keyword){
-        List<Track> tracks;
-        if (keyword == null || keyword.isBlank()){
-            tracks = trackRepository.findAll();
-        }else {
-            tracks = trackRepository
-                    .findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(keyword, keyword);
+
+    /**
+     * =========================================
+     *  트랙 목록 조회 / 검색
+     * =========================================
+     * - keyword가 없으면 전체 트랙 목록 조회
+     * - keyword가 있으면 제목/아티스트 기준 검색
+     * - 페이징(Pageable) 및 정렬 지원
+     */
+    public Page<TrackResponse> getTracks(String keyword, Pageable pageable) {
+
+        // 검색어 길이 정책 검증
+        if (keyword != null && !keyword.isBlank() && keyword.length() < 2) {
+            throw new BusinessException(ErrorCode.TRACK_SEARCH_KEYWORD_TOO_SHORT);
         }
-        return tracks.stream()
-                .map(TrackResponse::from)
-                .toList();
+
+        Page<Track> page;
+
+        if (keyword == null || keyword.isBlank()) {
+            page = trackRepository.findAll(pageable);
+        } else {
+            page = trackRepository
+                    .findByTitleContainingIgnoreCaseOrArtistContainingIgnoreCase(
+                            keyword, keyword, pageable
+                    );
+        }
+
+        return page.map(TrackResponse::from);
     }
 
-@Transactional
-public TrackResponse createTrack(TrackCreateRequest request) {
+    /**
+     * =========================================
+     *  트랙 생성
+     * =========================================
+     * - 필수 값(title, artist) 검증
+     * - 새로운 트랙 엔티티 생성 및 저장
+     */
+    @Transactional
+    public TrackResponse createTrack(TrackCreateRequest request) {
     if (request.getTitle() == null || request.getTitle().isBlank()) {
         throw new IllegalStateException("title은 필수입니다.");
     }
@@ -54,8 +88,17 @@ public TrackResponse createTrack(TrackCreateRequest request) {
 
     Track saved = trackRepository.save(track); // INSERT
     return TrackResponse.from(saved);
-}
+    }
 
+
+    /**
+     * =========================================
+     *  트랙 수정 (부분 수정 / PATCH 스타일)
+     * =========================================
+     * - 트랙 ID 기준 조회
+     * - 요청 값 중 null이 아닌 필드만 반영
+     * - 더티 체킹으로 UPDATE 수행
+     */
     @Transactional
     public TrackResponse updateTrack(Long trackId, TrackUpdateRequest request) {
         Track track = trackRepository.findById(trackId)
@@ -73,6 +116,14 @@ public TrackResponse createTrack(TrackCreateRequest request) {
         return TrackResponse.from(track);
     }
 
+    /**
+     * =========================================
+     *  트랙 삭제
+     * =========================================
+     * - 트랙 ID 기준 조회
+     * - 존재하지 않을 경우 TRACK_NOT_FOUND 발생
+     * - 트랙 엔티티 삭제
+     */
     @Transactional
     public void deleteTrack(Long trackId) {
         Track track = trackRepository.findById(trackId)

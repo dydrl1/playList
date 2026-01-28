@@ -2,6 +2,7 @@ package com.playlist.backend.playlistTrack;
 
 import com.playlist.backend.Track.Track;
 import com.playlist.backend.Track.TrackRepository;
+import com.playlist.backend.Track.dto.TrackSourceType;
 import com.playlist.backend.common.exception.BusinessException;
 import com.playlist.backend.common.exception.ErrorCode;
 import com.playlist.backend.playlist.Playlist;
@@ -54,13 +55,27 @@ public class PlaylistTrackService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
 
         if (req.getTracks() == null || req.getTracks().isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST); // 적절한 코드로 교체
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
         for (PlaylistTracksAddRequest.TrackItem item : req.getTracks()) {
 
-            String sourceType = item.getSourceType();
-            String sourceUrl  = item.getSourceUrl();
+            String rawSourceType = item.getSourceType();
+            String sourceType = rawSourceType == null
+                    ? null
+                    : rawSourceType.trim().toUpperCase();
+
+            String sourceUrl = item.getSourceUrl();
+
+            // 지원하지 않는 소스 차단
+            if (!TrackSourceType.isSupported(sourceType)) {
+                throw new BusinessException(ErrorCode.TRACK_SOURCE_NOT_SUPPORTED);
+            }
+
+            // sourceUrl 기본 검증(최소)
+            if (sourceUrl == null || sourceUrl.isBlank()) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+            }
 
             Track track = trackRepository.findBySourceTypeAndSourceUrl(sourceType, sourceUrl)
                     .orElseGet(() -> {
@@ -74,13 +89,14 @@ public class PlaylistTrackService {
 
             // 중복 방지
             if (playlistTrackRepository.existsByPlaylistIdAndTrackId(playlistId, track.getId())) {
-                continue; // 또는 예외 처리
+                throw new BusinessException(ErrorCode.PLAYLIST_TRACK_ALREADY_EXISTS);
             }
 
             // 순서: null이면 마지막
             int order;
             if (item.getTrackOrder() == null) {
-                order = playlistTrackRepository.findMaxOrder(playlistId) + 1;
+                Integer max = playlistTrackRepository.findMaxOrder(playlistId);
+                order = (max == null ? 1 : max + 1);
             } else {
                 order = item.getTrackOrder();
                 // (선택) 중간 삽입이면 뒤 트랙 order 밀기 로직 필요
@@ -95,6 +111,7 @@ public class PlaylistTrackService {
             );
         }
     }
+
 
 
     /**

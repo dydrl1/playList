@@ -53,11 +53,23 @@ public class PlaylistService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PLAYLIST_NOT_FOUND));
     }
 
-    private void validateOwner(Long userId, Playlist playlist) {
-        if (!playlist.getUser().getId().equals(userId)) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+    private void validateOwnerOrThrow(Long userId, Playlist playlist, ErrorCode errorCode) {
+        Long ownerId = playlist.getUser().getId();
+        if (!ownerId.equals(userId)) {
+            throw new BusinessException(errorCode);
         }
     }
+
+    private void validatePrivateAccess(Long loginUserId, Playlist playlist) {
+        if (!playlist.isPublic()) {
+            if (loginUserId == null) {
+                throw new BusinessException(ErrorCode.PLAYLIST_PRIVATE);
+            }
+            // 로그인 했어도 소유자가 아니면 비공개 접근 불가
+            validateOwnerOrThrow(loginUserId, playlist, ErrorCode.PLAYLIST_PRIVATE);
+        }
+    }
+
 
     // =========================================
     //  내 플레이리스트 전체 조회 (좋아요 집계 1쿼리 + 정렬 정책 명시)
@@ -132,11 +144,11 @@ public class PlaylistService {
     // =========================================
     //  플레이리스트 수정
     // =========================================
-
     @Transactional
     public PlaylistResponse updateMyPlaylist(Long userId, Long playlistId, PlaylistUpdateRequest request) {
         Playlist playlist = getPlaylistOrThrow(playlistId);
-        validateOwner(userId, playlist);
+
+        validateOwnerOrThrow(userId, playlist, ErrorCode.PLAYLIST_MODIFY_FORBIDDEN);
 
         playlist.update(
                 request.getTitle(),
@@ -144,21 +156,18 @@ public class PlaylistService {
                 request.getIsPublic()
         );
 
-        // 현재 좋아요 수 조회
         int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
-
-        // dirty checking 으로 자동 반영
         return PlaylistResponse.from(playlist, likeCount);
     }
 
     // =========================================
     //  플레이리스트 삭제
     // =========================================
-
     @Transactional
     public void deleteMyPlaylist(Long userId, Long playlistId) {
         Playlist playlist = getPlaylistOrThrow(playlistId);
-        validateOwner(userId, playlist);
+
+        validateOwnerOrThrow(userId, playlist, ErrorCode.PLAYLIST_DELETE_FORBIDDEN);
 
         playlistRepository.delete(playlist);
     }
@@ -176,7 +185,7 @@ public class PlaylistService {
             if(loginUserId == null){
                 throw new BusinessException(ErrorCode.PLAYLIST_PRIVATE);
             }
-            validateOwner(loginUserId, playlist);
+            validatePrivateAccess(loginUserId, playlist);
         }
 
         // 트랙: fetch join(또는 entity graph)로 1 쿼리
@@ -194,6 +203,7 @@ public class PlaylistService {
 
         return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks);
     }
+
 
     // 최신/조회순 전체 보기
     @Transactional(readOnly = true)
