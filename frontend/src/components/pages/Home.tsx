@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 interface Track {
   title: string;
@@ -14,6 +16,7 @@ export default function Home() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   // API 호출
     const fetchResults = async (q: string, p: number, append = false) => {
@@ -24,7 +27,7 @@ export default function Home() {
         const res = await axios.get(`/integraions/search`, {
           params: { query: q, page: p },
         });
-        const data: Track[] = res.data.tracks; // API response에 맞게 조정
+        const data: Track[] = res.data.tracks;
         setResults((prev) => (append ? [...prev, ...data] : data));
       } catch (err) {
         console.error(err);
@@ -37,7 +40,7 @@ export default function Home() {
   const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && query.trim() !== "") {
       try {
-        const provider = "YOUTUBE"; // 예시: ProviderType Enum 값
+        const provider = "YOUTUBE"; //  ProviderType Enum 값
         const limit = 15;            // 원하는 검색 결과 개수
 
         const res = await fetch(
@@ -81,6 +84,21 @@ export default function Home() {
         ref={containerRef}
         className="relative z-10 flex flex-col items-center pt-20 px-10 max-h-screen overflow-auto"
       >
+      {/* 로그인 버튼 */}
+      <div className="absolute top-6 right-8 z-20">
+        <Link
+          to="/login"
+          className="
+            text-lg font-semibold
+            text-gray-700
+            hover:text-black
+            transition-colors
+          "
+        >
+          로그인
+        </Link>
+      </div>
+
         {/* 검색/로고 컨테이너 */}
         <div
           className={`
