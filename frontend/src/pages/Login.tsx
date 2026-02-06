@@ -16,11 +16,16 @@ export default function Login() {
         password,
       });
 
-      localStorage.setItem("accessToken", res.data.accessToken);
-      navigate("/");
-    } catch (e) {
-      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
-    }
+      const token = res.data.accessToken;
+
+
+          localStorage.setItem("accessToken", token);
+          window.dispatchEvent(new Event("auth-change"));
+
+          navigate("/"); // 홈으로 이동
+        } catch (e) {
+          console.error("로그인 실패", e);
+        }
   };
 
   return (

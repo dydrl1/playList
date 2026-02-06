@@ -36,6 +36,20 @@ export default function Home() {
       }
     };
 
+  // 로그인 즉시 상단문구 변경
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    !!localStorage.getItem("accessToken")
+  );
+
+  useEffect(() => {
+    const syncAuth = () =>
+      setIsLoggedIn(!!localStorage.getItem("accessToken"));
+
+    window.addEventListener("auth-change", syncAuth);
+    return () => window.removeEventListener("auth-change", syncAuth);
+  }, []);
+
+
   // 검색 엔터
   const handleSearch = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && query.trim() !== "") {
@@ -44,7 +58,7 @@ export default function Home() {
         const limit = 15;            // 원하는 검색 결과 개수
 
         const res = await fetch(
-          `http://localhost:8080/integraions/search?provider=${provider}&query=${encodeURIComponent(query)}&limit=${limit}`
+          `http://localhost:8080/integrations/search?provider=${provider}&query=${encodeURIComponent(query)}&limit=${limit}`
         );
         if (!res.ok) throw new Error("검색 API 호출 실패");
 
@@ -85,18 +99,50 @@ export default function Home() {
         className="relative z-10 flex flex-col items-center pt-20 px-10 max-h-screen overflow-auto"
       >
       {/* 로그인 버튼 */}
-      <div className="absolute top-6 right-8 z-20">
-        <Link
-          to="/login"
-          className="
-            text-lg font-semibold
-            text-gray-700
-            hover:text-black
-            transition-colors
-          "
-        >
-          로그인
-        </Link>
+      <div className="absolute top-6 right-8 z-20 flex gap-4">
+        {!isLoggedIn ? (
+          <Link
+            to="/login"
+            className="
+              text-lg font-semibold
+              text-gray-700
+              hover:text-black
+              transition-colors
+            "
+          >
+            로그인
+          </Link>
+        ) : (
+          <>
+            <button
+              onClick={() => {
+                localStorage.removeItem("accessToken");
+                window.dispatchEvent(new Event("auth-change"));
+                navigate("/mypage");
+              }}
+              className="
+                text-lg font-semibold
+                text-gray-700
+                hover:text-black
+                transition-colors
+              "
+            >
+              로그아웃
+            </button>
+
+            <Link
+              to="/mypage"
+              className="
+                text-lg font-semibold
+                text-gray-700
+                hover:text-black
+                transition-colors
+              "
+            >
+              마이페이지
+            </Link>
+          </>
+        )}
       </div>
 
         {/* 검색/로고 컨테이너 */}
