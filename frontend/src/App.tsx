@@ -3,6 +3,7 @@ import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Signup from "@/pages/signup";
 import MyPage from "@/pages/MyPage";
+import PlaylistDetail from "@/pages/PlaylistDetail";
 
 export default function App() {
   return (
@@ -13,10 +14,9 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/mypage" element={<MyPage />} />
+          <Route path="/playlists/:playlistId" element={<PlaylistDetail />} />
         </Routes>
       </div>
     </Router>
   );
-
-
 }
