@@ -4,6 +4,7 @@ import com.playlist.backend.security.JwtAuthenticationEntryPoint;
 import com.playlist.backend.security.JwtAuthenticationFilter;
 import com.playlist.backend.security.JwtTokenProvider;
 import com.playlist.backend.security.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,6 +21,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -34,11 +37,13 @@ public class SecurityConfig {
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
     }
 
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) //  새로운 방식
+                // CORS 설정을 가장 먼저 적용
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable())
@@ -50,7 +55,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                 )
-
+                // Preflighyt 요청(OTIONS)은 무조건 허용
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/auth/signup",
@@ -58,7 +63,7 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/actuator/health",
-                                "/integraions/search"
+                                "/integrations/search"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -78,6 +83,7 @@ public class SecurityConfig {
         config.addAllowedMethod("*");
         config.addAllowedHeader("*");
         config.setAllowCredentials(true);
+        config.setExposedHeaders(List.of("Authorization", "Refresh-Token"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

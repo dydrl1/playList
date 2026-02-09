@@ -8,6 +8,9 @@ import com.playlist.backend.auth.token.dto.RefreshRequest;
 import com.playlist.backend.common.response.ApiResponse;
 import com.playlist.backend.security.JwtUtil;
 import com.playlist.backend.user.User;
+import com.playlist.backend.user.UserRepository;
+import com.playlist.backend.user.dto.UserInfo;
+import com.playlist.backend.user.dto.UserProfileResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,12 +21,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
 
     public AuthController(AuthService authService,
-                          JwtUtil jwtUtil) {
+                          JwtUtil jwtUtil, UserRepository userRepository) {
         this.authService = authService;
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     // 회원가입
@@ -36,18 +41,28 @@ public class AuthController {
     }
 
 
+
     // 로그인
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<TokenResponse>> login(
-            @RequestBody @Valid LoginRequest request
-    ) {
-        TokenResponse tokenResponse =
-                authService.login(request.getEmail(), request.getPassword());
+    public ResponseEntity<UserInfo> login(@RequestBody LoginRequest request) {
+        TokenResponse tokenResponse = authService.login(request.getEmail(), request.getPassword());
 
-        ApiResponse<TokenResponse> body = ApiResponse.success(tokenResponse);
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return jwtUtil.withBearerHeader(body, tokenResponse.getAccessToken());
+        UserInfo userInfo = UserInfo.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .build();
+
+        return ResponseEntity.ok()
+                .header("Authorization", "Bearer " + tokenResponse.getAccessToken())
+                .header("Refresh-Token", tokenResponse.getRefreshToken())
+                .body(userInfo);
     }
+
+
 
 
     // 리프레쉬 토큰

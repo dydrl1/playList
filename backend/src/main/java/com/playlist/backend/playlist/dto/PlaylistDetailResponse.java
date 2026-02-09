@@ -17,6 +17,7 @@ public class PlaylistDetailResponse {
 
     private int likeCount;
     private boolean likedByMe; // 로그인 기능 붙어있으면 사용
+    private boolean isOwner;   // 주인 여부
 
     private List<TrackItemResponse> tracks;
 
@@ -24,8 +25,12 @@ public class PlaylistDetailResponse {
             Playlist p,
             int likeCount,
             boolean likedByMe,
-            List<TrackItemResponse> tracks
+            List<TrackItemResponse> tracks,
+            Long currentUserId    // 현재 로그인한 유저 ID를 파라미터로 받음
     ) {
+        // 현재 유저 ID와 플레이리스트 소유자 ID를 비교하여 isOwner 결정
+        boolean isOwner = currentUserId != null && p.getUser().getId().equals(currentUserId);
+
         return PlaylistDetailResponse.builder()
                 .playlistId(p.getId())
                 .ownerUserId(p.getUser().getId())
@@ -34,6 +39,7 @@ public class PlaylistDetailResponse {
                 .isPublic(p.isPublic())
                 .likeCount(likeCount)
                 .likedByMe(likedByMe)
+                .isOwner(isOwner)
                 .tracks(tracks)
                 .build();
     }

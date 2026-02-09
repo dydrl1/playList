@@ -125,6 +125,7 @@ public class PlaylistService {
 
     @Transactional
     public PlaylistResponse createPlaylist(Long userId, PlaylistCreateRequest request) {
+        log.info("요청된 유저 ID: {}", userId);
         User owner = getUserOrThrow(userId);
 
         boolean isPublic = request.getIsPublic() == null || request.getIsPublic();
@@ -201,7 +202,7 @@ public class PlaylistService {
         boolean likedByMe = (loginUserId != null)
                 && playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, loginUserId);
 
-        return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks);
+        return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks, loginUserId);
     }
 
 

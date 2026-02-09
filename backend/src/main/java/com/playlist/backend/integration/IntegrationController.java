@@ -14,7 +14,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/integraions")
+@RequestMapping("/integrations")
 public class IntegrationController {
 
     private final SearchServiceRegistry registry;

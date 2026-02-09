@@ -16,6 +16,10 @@ public class CorsConfig {
         config.addAllowedHeader("*"); // 모든 헤더 허용
         config.setAllowCredentials(true);
 
+        // js에서 읽을 헤더
+        config.addExposedHeader("Authorization");
+        config.addExposedHeader("Refresh-Token");
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return new CorsFilter(source);

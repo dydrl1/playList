@@ -21,7 +21,7 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    private static final String CLAIM_TOKEN_TYPE = "typ";
+    private static final String CLAIM_TOKEN_TYPE = "type";
     private static final String TYPE_ACCESS = "ACCESS";
     private static final String TYPE_REFRESH = "REFRESH";
 
@@ -107,13 +107,14 @@ public class JwtUtil {
 
 
     /* ===================== Spring Security 연동 ===================== */
-
     public Authentication getAuthentication(String token) {
         String username = getUsernameFromToken(token);
+
+        // 여기서 로드된 userDetails가 실제 CustomUserDetails 타입이어야 합니다.
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
         return new UsernamePasswordAuthenticationToken(
-                userDetails,
+                userDetails, // 이 객체가 CustomUserDetails여야 컨트롤러가 인식함
                 null,
                 userDetails.getAuthorities()
         );
