@@ -140,14 +140,33 @@ export default function MyPage() {
 
                 {/* 2. 텍스트 정보 영역 */}
                 <div className="p-4 flex flex-col gap-1 bg-white/80 backdrop-blur-sm">
-                  <span className="font-bold text-gray-900 text-base truncate">
-                    {pl.title}
-                  </span>
-                  <div className="flex justify-between items-center mt-1">
-                    <span className="text-gray-500 text-xs font-medium">
-                      곡 {pl.trackCount || 0}개
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-gray-900 text-base truncate flex-1">
+                      {pl.title}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 font-bold">
+                    {/* 내 플리지만 다른 사람들에게 받은 좋아요 수를 표시 */}
+                    {pl.likeCount > 0 && (
+                      <span className="text-[10px] text-red-500 font-bold ml-2">
+                        ❤️ {pl.likeCount}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="flex gap-2 items-center">
+                      <span className="text-gray-500 text-xs font-medium">
+                        곡 {pl.trackCount || 0}개
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        조회 {pl.viewCount || 0}
+                      </span>
+                    </div>
+
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      pl.isPublic
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400"
+                    }`}>
                       {pl.isPublic ? "공개" : "비공개"}
                     </span>
                   </div>
