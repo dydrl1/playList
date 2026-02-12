@@ -6,6 +6,7 @@ import com.playlist.backend.playlistTrack.dto.PlaylistTrackReorderRequest;
 import com.playlist.backend.playlistTrack.dto.PlaylistTrackResponse;
 import com.playlist.backend.playlistTrack.dto.PlaylistTracksAddRequest;
 import com.playlist.backend.security.CustomUserDetails;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,7 +16,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/playlists/{playlistId}/tracks")
+@RequestMapping("/api/playlists/{playlistId}/tracks")
 public class PlaylistTrackController {
 
     private final PlaylistTrackService playlistTrackService;
@@ -37,7 +38,7 @@ public class PlaylistTrackController {
     @PostMapping
     public ResponseEntity<ApiResponse<String>> addTrack(
             @PathVariable Long playlistId,
-            @RequestBody PlaylistTracksAddRequest request
+            @Valid @RequestBody PlaylistTracksAddRequest request
     ) {
         playlistTrackService.addTracks(playlistId, request);
         return ResponseEntity.ok(ApiResponse.success("트랙이 플레이리스트에 추가되었습니다."));

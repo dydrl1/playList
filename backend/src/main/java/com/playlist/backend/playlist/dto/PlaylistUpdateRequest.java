@@ -10,5 +10,5 @@ public class PlaylistUpdateRequest {
     private String title;
     private String description;
     private Boolean isPublic;
-
+    private String thumbnailUrl;
 }

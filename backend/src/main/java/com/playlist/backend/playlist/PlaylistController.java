@@ -6,6 +6,7 @@ import com.playlist.backend.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
@@ -82,11 +83,16 @@ public class PlaylistController {
     @GetMapping("/playlists")
     public ResponseEntity<ApiResponse<Page<PlaylistResponse>>> getPublicPlaylists(
             @RequestParam(defaultValue = "LATEST") PublicPlaylistSort sort,
-            @PageableDefault(size = 20) Pageable pageable
+            @PageableDefault(size = 20) Pageable pageable,
+            @AuthenticationPrincipal CustomUserDetails user
     ) {
+        Long loginUserId = (user != null) ? user.getId() : null; // 비로그인 대응
+        // pageable에서 잘못된 정렬 정보를 제거하고 새 PageRequest 생성
+        Pageable cleanPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+
         Page<PlaylistResponse> page = switch (sort){
-            case LIKE -> playlistService.getPublicPlaylistsOrderByLike(pageable);
-            case VIEW, LATEST -> playlistService.getPublicPlaylists(sort,pageable);
+            case LIKE -> playlistService.getPublicPlaylistsOrderByLike(cleanPageable, loginUserId);
+            case VIEW, LATEST -> playlistService.getPublicPlaylists(sort,cleanPageable, loginUserId);
         };
 
         return ResponseEntity.ok(ApiResponse.success(page));
@@ -118,7 +124,7 @@ public class PlaylistController {
     /**
      *  플레이리스트 좋아요
      */
-    @PostMapping("{playlistId}/likes")
+    @PostMapping("playlists/{playlistId}/likes")
     public ResponseEntity<Void> like(
             @PathVariable Long playlistId,
             @AuthenticationPrincipal CustomUserDetails user
@@ -132,7 +138,7 @@ public class PlaylistController {
      *  플레이리스트 좋아요 취소
      */
 
-    @DeleteMapping("{playlistId}/unlikes")
+    @DeleteMapping("playlists/{playlistId}/unlikes")
     public ResponseEntity<Void> unlike(
             @PathVariable Long playlistId,
             @AuthenticationPrincipal CustomUserDetails user

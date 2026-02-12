@@ -100,7 +100,11 @@ public class PlaylistService {
 
         // 3) DTO 매핑 (없으면 0)
         return playlists.stream()
-                .map(p -> PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0)))
+                .map(p -> {
+                    // 내 플리 목록 조회 시, 내가 좋아요 눌렀는지 여부 판단
+                    boolean isLiked = playlistLikeRepository.existsByPlaylistIdAndUserId(p.getId(), userId);
+                    return PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
+                })
                 .toList();
     }
 
@@ -139,7 +143,7 @@ public class PlaylistService {
         log.info("createPlaylist userId={}", userId);
 
         Playlist saved = playlistRepository.save(playlist);
-        return PlaylistResponse.from(saved, 0);
+        return PlaylistResponse.from(saved, 0, false);
     }
 
     // =========================================
@@ -154,11 +158,13 @@ public class PlaylistService {
         playlist.update(
                 request.getTitle(),
                 request.getDescription(),
-                request.getIsPublic()
+                request.getIsPublic(),
+                request.getThumbnailUrl()
         );
 
         int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
-        return PlaylistResponse.from(playlist, likeCount);
+        boolean isLiked = playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, userId);
+        return PlaylistResponse.from(playlist, likeCount, isLiked);
     }
 
     // =========================================
@@ -208,37 +214,28 @@ public class PlaylistService {
 
     // 최신/조회순 전체 보기
     @Transactional(readOnly = true)
-    public Page<PlaylistResponse> getPublicPlaylists(PublicPlaylistSort sort, Pageable pageable) {
-
-        // 1) sort에 따라 repository 메서드 선택
+    public Page<PlaylistResponse> getPublicPlaylists(PublicPlaylistSort sort, Pageable pageable, Long loginUserId) {
         Page<Playlist> page = switch (sort) {
             case VIEW -> playlistRepository.findByIsPublicTrueOrderByViewCountDescIdDesc(pageable);
             case LATEST -> playlistRepository.findByIsPublicTrueOrderByIdDesc(pageable);
             default -> throw new BusinessException(ErrorCode.INVALID_REQUEST);
         };
 
-        if (page.isEmpty()) {
-            return Page.empty(pageable);
-        }
+        if (page.isEmpty()) return Page.empty(pageable);
 
-        // 2) ids 추출
         List<Long> ids = page.getContent().stream().map(Playlist::getId).toList();
+        Map<Long, Integer> likeCountMap = getLikeCountMap(ids);
 
-        // 3) 좋아요 집계 1쿼리
-        Map<Long, Integer> likeCountMap = playlistLikeRepository.countGroupByPlaylistIds(ids).stream()
-                .collect(Collectors.toMap(
-                        PlaylistLikeCountRow::getPlaylistId,
-                        row -> row.getCnt().intValue()
-                ));
-
-        // 4) DTO 매핑
-        return page.map(p -> PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0)));
+        return page.map(p -> {
+            boolean isLiked = (loginUserId != null) && playlistLikeRepository.existsByPlaylistIdAndUserId(p.getId(), loginUserId);
+            return PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
+        });
     }
 
 
     // 좋아요 순 전체보기
     @Transactional(readOnly = true)
-    public Page<PlaylistResponse> getPublicPlaylistsOrderByLike(Pageable pageable) {
+    public Page<PlaylistResponse> getPublicPlaylistsOrderByLike(Pageable pageable, Long loginUserId) {
         var page = playlistRepository.findPublicOrderByLikeCountDesc(pageable);
         if (page.isEmpty()) return Page.empty(pageable);
 
@@ -250,7 +247,10 @@ public class PlaylistService {
                         row -> row.getCnt().intValue()
                 ));
 
-        return page.map(p -> PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0)));
+        return page.map(p -> {
+            boolean isLiked = (loginUserId != null) && playlistLikeRepository.existsByPlaylistIdAndUserId(p.getId(), loginUserId);
+            return PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
+        });
     }
 
 
@@ -304,6 +304,15 @@ public class PlaylistService {
 
         if (like == null) return; // 멱등
         playlistLikeRepository.delete(like);
+    }
+
+    // 중복되는 좋아요 집계 로직 추출
+    private Map<Long, Integer> getLikeCountMap(List<Long> ids) {
+        return playlistLikeRepository.countGroupByPlaylistIds(ids).stream()
+                .collect(Collectors.toMap(
+                        PlaylistLikeCountRow::getPlaylistId,
+                        row -> row.getCnt().intValue()
+                ));
     }
 
 }
