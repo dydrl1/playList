@@ -19,6 +19,7 @@ public class PlaylistTrackResponse {
     private String album;
     private String sourceType;
     private String sourceUrl;
+    private String imageUrl;
 
 
 
@@ -33,6 +34,7 @@ public class PlaylistTrackResponse {
                 .title(track.getTitle())
                 .artist(track.getArtist())
                 .album(track.getAlbum())
+                .imageUrl(track.getImageUrl())
                 .sourceType(track.getSourceType())
                 .sourceUrl(track.getSourceUrl())
                 .build();

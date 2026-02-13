@@ -59,27 +59,21 @@ public class PlaylistTrackService {
         }
 
         for (PlaylistTracksAddRequest.TrackItem item : req.getTracks()) {
-
             String rawSourceType = item.getSourceType();
-            String sourceType = rawSourceType == null
-                    ? null
-                    : rawSourceType.trim().toUpperCase();
-
+            String sourceType = rawSourceType == null ? null : rawSourceType.trim().toUpperCase();
             String sourceUrl = item.getSourceUrl();
 
-            // 지원하지 않는 소스 차단
             if (!TrackSourceType.isSupported(sourceType)) {
                 throw new BusinessException(ErrorCode.TRACK_SOURCE_NOT_SUPPORTED);
             }
 
-            // sourceUrl 기본 검증(최소)
             if (sourceUrl == null || sourceUrl.isBlank()) {
                 throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
             }
 
             Track track = trackRepository.findBySourceTypeAndSourceUrl(sourceType, sourceUrl)
                     .orElseGet(() -> {
-                        Track t = new Track(item.getTitle(), item.getArtist());
+                        Track t = new Track(item.getTitle(), item.getArtist(), item.getImageUrl());
                         t.setAlbum(item.getAlbum());
                         t.setDurationSec(item.getDurationSec());
                         t.setSourceType(sourceType);
@@ -87,28 +81,31 @@ public class PlaylistTrackService {
                         return trackRepository.save(t);
                     });
 
-            // 중복 방지
             if (playlistTrackRepository.existsByPlaylistIdAndTrackId(playlistId, track.getId())) {
                 throw new BusinessException(ErrorCode.PLAYLIST_TRACK_ALREADY_EXISTS);
             }
 
-            // 순서: null이면 마지막
             int order;
             if (item.getTrackOrder() == null) {
                 Integer max = playlistTrackRepository.findMaxOrder(playlistId);
                 order = (max == null ? 1 : max + 1);
             } else {
                 order = item.getTrackOrder();
-                // (선택) 중간 삽입이면 뒤 트랙 order 밀기 로직 필요
             }
 
-            playlistTrackRepository.save(
-                    PlaylistTrack.builder()
-                            .playlist(playlist)
-                            .track(track)
-                            .trackOrder(order)
-                            .build()
-            );
+            // 1. PlaylistTrack 객체를 생성
+            PlaylistTrack pt = PlaylistTrack.builder()
+                    .playlist(playlist)
+                    .track(track)
+                    .trackOrder(order)
+                    .build();
+
+            // 2. ⭐ Playlist 엔티티 내부의 addTrack을 호출합니다.
+            // 이 안에서 (1) 리스트에 추가 (2) 썸네일 없으면 업데이트 로직이 실행됩니다.
+            playlist.addTrack(pt);
+
+            // 3. 연결 정보를 저장합니다.
+            playlistTrackRepository.save(pt);
         }
     }
 

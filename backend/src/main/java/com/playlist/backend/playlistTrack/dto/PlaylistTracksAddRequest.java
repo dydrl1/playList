@@ -20,6 +20,7 @@ public class PlaylistTracksAddRequest {
         private String title;
         private String artist;
         private String album;
+        private String imageUrl;
         private Integer durationSec;
 
         // 외부 소스 정보
@@ -27,5 +28,7 @@ public class PlaylistTracksAddRequest {
         private String sourceUrl;
 
         private Integer trackOrder; // null이면 마지막에 붙이기
+
+        public String getImageUrl() { return imageUrl; }
     }
 }

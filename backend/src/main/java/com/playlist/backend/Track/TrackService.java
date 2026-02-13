@@ -80,11 +80,12 @@ public class TrackService {
         throw new IllegalStateException(("artist는 필수입니다."));
     }
 
-    Track track = new Track(request.getTitle(), request.getArtist());
+        Track track = new Track(request.getTitle(), request.getArtist(), request.getImageUrl());
     track.setAlbum(request.getAlbum());
     track.setDurationSec(request.getDurationSec());
     track.setSourceType(request.getSourceType());
     track.setSourceUrl(request.getSourceUrl());
+    track.setImageUrl(request.getImageUrl());
 
     Track saved = trackRepository.save(track); // INSERT
     return TrackResponse.from(saved);
@@ -111,6 +112,7 @@ public class TrackService {
         if (request.getDurationSec() != null) track.setDurationSec(request.getDurationSec());
         if (request.getSourceType() != null) track.setSourceType(request.getSourceType());
         if (request.getSourceUrl() != null) track.setSourceUrl(request.getSourceUrl());
+        if (request.getImageUrl() != null) track.setImageUrl(request.getImageUrl());
 
         // save() 없어도 더티체킹으로 UPDATE 되지만, 명시적으로 해도 됨
         return TrackResponse.from(track);

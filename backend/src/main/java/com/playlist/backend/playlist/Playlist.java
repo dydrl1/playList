@@ -78,6 +78,12 @@ public class Playlist {
     public void addTrack(PlaylistTrack playlistTrack) {
         playlistTracks.add(playlistTrack);
         playlistTrack.setPlaylist(this);
+
+        // 썸네일이 비어있다면(첫 번째 곡이라면) 현재 추가되는 곡의 이미지로 업데이트
+        if (this.thumbnailUrl == null || this.thumbnailUrl.isBlank()) {
+            String trackImage = playlistTrack.getTrack().getImageUrl();
+            this.updateThumbnail(trackImage); // 👈 작성하신 메서드 활용
+        }
     }
 
     public void removeTrack(PlaylistTrack playlistTrack) {

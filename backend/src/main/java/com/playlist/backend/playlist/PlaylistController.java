@@ -146,4 +146,13 @@ public class PlaylistController {
         playlistService.unlike(user.getId(), playlistId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/playlists/tracks/{playlistTrackId}")
+    public ResponseEntity<ApiResponse<String>> removeTrack(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long playlistTrackId
+    ) {
+        playlistService.removeTrackFromPlaylist(playlistTrackId, userDetails.getId());
+        return ResponseEntity.ok(ApiResponse.success("플레이리스트에서 곡이 제거되었습니다."));
+    }
 }

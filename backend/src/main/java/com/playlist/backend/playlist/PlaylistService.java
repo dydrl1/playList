@@ -1,5 +1,7 @@
 package com.playlist.backend.playlist;
 
+import com.playlist.backend.Track.Track;
+import com.playlist.backend.Track.TrackRepository;
 import com.playlist.backend.common.exception.BusinessException;
 import com.playlist.backend.common.exception.ErrorCode;
 import com.playlist.backend.playlist.dto.*;
@@ -38,6 +40,7 @@ public class PlaylistService {
     private final PlaylistTrackRepository playlistTrackRepository;
     private final PlaylistLikeRepository playlistLikeRepository;
     private final StringRedisTemplate stringRedisTemplate;
+    private final TrackRepository trackRepository;
 
     // =========================================
     //  유틸 메서드 (검증용)
@@ -108,20 +111,6 @@ public class PlaylistService {
                 .toList();
     }
 
-
-
-//    // =========================================
-//    //  내 플레이리스트 단건 조회
-//    // =========================================
-//    @Transactional(readOnly = true)
-//    public PlaylistResponse getMyPlaylist(Long userId, Long playlistId) {
-//        Playlist playlist = getPlaylistOrThrow(playlistId);
-//        validateOwner(userId, playlist);
-//
-//        int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
-//
-//        return PlaylistResponse.from(playlist, likeCount);
-//    }
 
     // =========================================
     //  플레이리스트 생성
@@ -315,4 +304,62 @@ public class PlaylistService {
                 ));
     }
 
+    @Transactional
+    public void addTracksToPlaylist(Long playlistId, List<TrackAddRequest> requests, Long userId) {
+        Playlist playlist = getPlaylistOrThrow(playlistId);
+        validateOwnerOrThrow(userId, playlist, ErrorCode.ACCESS_DENIED);
+
+        for (TrackAddRequest req : requests) {
+            // 1. 이미 DB에 있는 곡인지 확인 (Repository 활용)
+            Track track = trackRepository.findBySourceTypeAndSourceId(req.getSourceType(), req.getSourceUrl())
+                    .orElseGet(() -> {
+                        // 2. 없는 곡이면 새로 생성하여 저장
+                        Track newTrack = Track.builder()
+                                .title(req.getTitle())
+                                .artist(req.getArtist())
+                                .imageUrl(req.getImageUrl())
+                                .sourceType(req.getSourceType())
+                                .sourceId(req.getSourceUrl()) // Request의 sourceUrl을 sourceId로 매핑
+                                .build();
+                        return trackRepository.save(newTrack);
+                    });
+
+            // 3. PlaylistTrack 연결 객체 생성
+            PlaylistTrack playlistTrack = PlaylistTrack.builder()
+                    .playlist(playlist)
+                    .track(track)
+                    .build();
+
+            // 4. ⭐ Playlist 엔티티의 addTrack 호출 (여기서 썸네일 업데이트 발생!)
+            playlist.addTrack(playlistTrack);
+
+            // 5. 연결 정보 저장
+            playlistTrackRepository.save(playlistTrack);
+        }
+    }
+
+
+    @Transactional
+    public void removeTrackFromPlaylist(Long playlistTrackId, Long loginUserId) {
+        PlaylistTrack pt = playlistTrackRepository.findById(playlistTrackId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TRACK_NOT_FOUND));
+
+        Playlist playlist = pt.getPlaylist(); // 플레이리스트 객체 확보
+
+        if (!playlist.getUser().getId().equals(loginUserId)) {
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // 3. 연결 삭제
+        playlistTrackRepository.delete(pt);
+
+        // 4. 썸네일 동기화 (삭제 후처리)
+        // 만약 삭제된 트랙의 이미지가 현재 플레이리스트의 썸네일과 같다면 갱신
+        if (pt.getTrack().getImageUrl().equals(playlist.getThumbnailUrl())) {
+            // 남은 트랙 중 첫 번째 트랙의 이미지로 변경 (없으면 null)
+            List<PlaylistTrack> remaining = playlistTrackRepository.findQueueByPlaylistId(playlist.getId());
+            String nextThumb = remaining.isEmpty() ? null : remaining.get(0).getTrack().getImageUrl();
+            playlist.updateThumbnail(nextThumb); // 아까 만든 메서드 활용
+        }
+    }
 }

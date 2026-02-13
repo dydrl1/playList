@@ -8,6 +8,7 @@ public class TrackCreateRequest {
     private String title;
     private String artist;
     private String album;
+    private String imageUrl;
     private Integer durationSec;
     private String sourceType;
     private String sourceUrl;

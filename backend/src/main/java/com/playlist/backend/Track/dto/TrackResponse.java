@@ -16,6 +16,7 @@ public class TrackResponse {
     private Integer durationSec;
     private String sourceType;
     private String sourceUrl;
+    private String imageUrl;
     private LocalDateTime createdAt;
 
     public static TrackResponse from(Track track){
@@ -24,6 +25,7 @@ public class TrackResponse {
                 .title(track.getTitle())
                 .artist(track.getArtist())
                 .album(track.getAlbum())
+                .imageUrl(track.getImageUrl())
                 .durationSec(track.getDurationSec())
                 .sourceType(track.getSourceType())
                 .sourceUrl(track.getSourceUrl())

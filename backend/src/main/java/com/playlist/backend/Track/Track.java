@@ -2,10 +2,15 @@ package com.playlist.backend.Track;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import org.springframework.web.ErrorResponse;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Builder
+@AllArgsConstructor
 @Table(
         name="track",
         uniqueConstraints = @UniqueConstraint(
@@ -28,6 +33,9 @@ public class Track {
     @Column(length = 100)
     private String album;   // 앨범명
 
+    @Column(length = 500) // URL은 길 수 있으므로 넉넉하게 잡습니다.
+    private String imageUrl;
+
     // 초 단위 재생 시간
     private Integer durationSec;
 
@@ -47,11 +55,13 @@ public class Track {
     protected Track() {
     }
 
-    public Track(String title, String artist) {
+    public Track(String title, String artist, String imageUrl) {
         this.title = title;
         this.artist = artist;
+        this.imageUrl = imageUrl;
         this.createdAt = LocalDateTime.now();
     }
+
 
     // === getter / setter ===
 
@@ -114,5 +124,9 @@ public class Track {
     public void setSourceId(String sourceId) {
         this.sourceId = sourceId;
     }
-    }
+
+    public String getImageUrl() {return imageUrl;}
+
+    public void setImageUrl(String imageUrl) {this.imageUrl = imageUrl;}
+}
 

@@ -22,18 +22,30 @@ public class PlaylistResponse {
 
 
     public static PlaylistResponse from(Playlist playlist, int likeCount, boolean isLiked) {
+        // 1. 기본적으로 저장된 썸네일을 가져오되
+        String thumb = playlist.getThumbnailUrl();
+
+        // 2. 만약 저장된 썸네일이 없다면 첫 번째 트랙의 이미지를 사용함
+        if ((thumb == null || thumb.isEmpty())
+                && playlist.getPlaylistTracks() != null
+                && !playlist.getPlaylistTracks().isEmpty()) {
+
+            // 첫 번째 트랙 엔티티를 꺼내서 그 이미지를 할당
+            thumb = playlist.getPlaylistTracks().get(0).getTrack().getImageUrl();
+        }
+
         return PlaylistResponse.builder()
                 .id(playlist.getId())
                 .title(playlist.getTitle())
                 .description(playlist.getDescription())
-                .ownerName(playlist.getOwnerName()) // 연관관계에 따라 수정
+                .ownerName(playlist.getOwnerName())
                 .ownerId(playlist.getUser().getId())
-                .thumbnailUrl(playlist.getThumbnailUrl())
-                .trackCount(playlist.getPlaylistTracks().size()) // 트랙 개수
+                .thumbnailUrl(thumb) // 👈 위에서 가공한 thumb을 전달
+                .trackCount(playlist.getPlaylistTracks().size())
                 .viewCount((int)playlist.getViewCount())
                 .isPublic(playlist.isPublic())
                 .likeCount(likeCount)
-                .isLiked(isLiked) // 이 부분이 들어가야 하트가 색칠됩니다.
+                .isLiked(isLiked)
                 .build();
     }
 }

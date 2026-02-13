@@ -33,12 +33,13 @@ public class ExternalTrackImportService {
         // 2) Track upsert (sourceType + sourceId)
         Track track = trackRepository.findBySourceTypeAndSourceId(req.getSourceType(), req.getSourceId())
                 .orElseGet(() -> {
-                    Track t = new Track(req.getTitle(), req.getArtist());
+                    Track t = new Track(req.getTitle(), req.getArtist(), req.getImageUrl());
                     t.setSourceType(req.getSourceType());
+                    t.setSourceId(req.getSourceId());
                     t.setSourceUrl(req.getSourceUrl());
                     t.setAlbum(req.getAlbum());
                     t.setDurationSec(req.getDurationSec());
-                    // sourceId는 setter가 없으므로 아래 "Track 엔티티 수정" 항목을 꼭 반영하세요.
+                    t.setImageUrl(req.getImageUrl());
                     return t;
                 });
 

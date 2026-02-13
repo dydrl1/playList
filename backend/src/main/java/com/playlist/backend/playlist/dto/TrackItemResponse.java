@@ -14,6 +14,7 @@ public class TrackItemResponse {
     private String title;
     private String artist;
     private String album;
+    private String imageUrl;
     private Integer durationSec;
     private String sourceType;
     private String sourceUrl;
@@ -26,6 +27,7 @@ public class TrackItemResponse {
                 .title(pt.getTrack().getTitle())
                 .artist(pt.getTrack().getArtist())
                 .album(pt.getTrack().getAlbum())
+                .imageUrl(pt.getTrack().getImageUrl())
                 .durationSec(pt.getTrack().getDurationSec())
                 .sourceType(pt.getTrack().getSourceType())
                 .sourceUrl(pt.getTrack().getSourceUrl())

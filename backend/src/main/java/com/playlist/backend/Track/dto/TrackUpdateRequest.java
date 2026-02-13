@@ -11,5 +11,6 @@ public class TrackUpdateRequest {
     private Integer durationSec;
     private String sourceType;
     private String sourceUrl;
+    private String imageUrl;
 
 }
