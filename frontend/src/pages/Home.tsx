@@ -146,6 +146,7 @@ const handleAddTrack = async (track: any) => {
           title: track.title,
           artist: track.artist,
           album: "Single", // 백엔드에서 null을 허용하지 않을 수 있으므로 기본값 설정
+          imageUrl: track.imageUrl || track.tumbnail,
           durationSec: track.durationSec || 0,
           sourceType: track.provider || "YOUTUBE", // 로그의 'YOUTUBE' 사용
           sourceUrl: track.externalId,           // 로그의 'externalId' 사용
@@ -258,7 +259,6 @@ const handleLikeToggle = async (e: React.MouseEvent, playlist: Playlist) => {
     alert("처리 중 오류가 발생했습니다. 다시 시도해주세요.");
   }
 };
-
 
 
   return (

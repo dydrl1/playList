@@ -108,8 +108,32 @@ export default function PlaylistDetail() {
     }
   };
 
+// 트랙 삭제 함수
+const handleRemoveTrack = async (playlistTrackId: number) => {
+  if (!window.confirm("플레이리스트에서 이 곡을 제거할까요? 🎵")) return;
+
+  try {
+    await api.delete(`/api/playlists/tracks/${playlistTrackId}`);
+
+    // UI 상태 업데이트: setData를 사용하여 tracks 배열 필터링
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tracks: prev.tracks.filter((t: any) => t.playlistTrackId !== playlistTrackId),
+      };
+    });
+
+    alert("곡이 제거되었습니다.");
+  } catch (err: any) {
+    alert("삭제 실패: " + (err.response?.data?.message || "알 수 없는 오류"));
+  }
+};
+
   if (loading) return <div className="p-10 text-center font-bold">로딩중...</div>;
   if (!data) return null;
+
+
 
   return (
     <div className="min-h-screen bg-gray-50 relative overflow-hidden">
@@ -191,9 +215,25 @@ export default function PlaylistDetail() {
               {/* ... 트랙 아이템 디자인 ... */}
               <div className="relative aspect-square rounded-2xl overflow-hidden mb-3">
                 <img src={track.imageUrl} alt={track.title} className="w-full h-full object-cover" />
+                {/* 👈 삭제 버튼 배치 (오너일 때만 노출) */}
+                        {data.owner && (
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button
+                              onClick={() => handleRemoveTrack(track.playlistTrackId)}
+                              className="bg-white/90 p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90"
+                              title="곡 제거"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
               </div>
               <p className="font-bold text-gray-800 truncate">{track.title}</p>
               <p className="text-xs text-gray-500 truncate">{track.artist}</p>
+
+
             </div>
           ))}
         </div>
