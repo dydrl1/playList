@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
@@ -41,6 +43,7 @@ public class PlaylistService {
     private final PlaylistLikeRepository playlistLikeRepository;
     private final StringRedisTemplate stringRedisTemplate;
     private final TrackRepository trackRepository;
+    private final RedisTemplate<String, String> redisTemplate;
 
     // =========================================
     //  유틸 메서드 (검증용)
@@ -176,6 +179,9 @@ public class PlaylistService {
     public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId) {
         Playlist playlist = getPlaylistOrThrow(playlistId);
 
+        // 1. 조회수 중복 방지 로직 (상단에 배치)
+        increaseViewCountWithRedis(playlist, loginUserId);
+
         // 비공개 접근 제어
         if(!playlist.isPublic()){
             if(loginUserId == null){
@@ -198,6 +204,27 @@ public class PlaylistService {
                 && playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, loginUserId);
 
         return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks, loginUserId);
+    }
+
+    private void increaseViewCountWithRedis(Playlist playlist, Long userId) {
+        // 비로그인 사용자는 IP 등으로 식별하거나, 일단 로그인을 기준으로 설명합니다.
+        String userKey = (userId != null) ? userId.toString() : "guest";
+        String redisKey = "view:playlist:" + playlist.getId() + ":user:" + userKey;
+
+        try {
+            // Redis에 키가 없으면 처음 조회하는 것 (24시간 유효)
+            Boolean isFirstView = redisTemplate.opsForValue().setIfAbsent(redisKey, "true", 24, TimeUnit.HOURS);
+
+            if (Boolean.TRUE.equals(isFirstView)) {
+                playlist.incrementViewCount(); // 이 메서드 안에서 viewCount++ 실행
+            }
+        } catch (Exception e) {
+            // Redis가 죽었을 때 발생하는 경고 (로그에 찍혔던 상황)
+            log.warn("Redis unavailable. Skip unique view. playlistId={}, userId={}", playlist.getId(), userId);
+
+            // [선택] Redis가 없으면 그냥 무조건 올릴지, 아니면 안 올릴지 결정
+            // playlist.incrementViewCount(); // Redis 없어도 일단 올리려면 주석 해제
+        }
     }
 
 
