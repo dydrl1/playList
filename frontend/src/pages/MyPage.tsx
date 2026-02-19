@@ -24,6 +24,11 @@ export default function MyPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
+  const [isEditOrderMode, setIsEditOrderMode] = useState(false);
+
+  // 프로필 수정 관련 상태
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [editName, setEditName] = useState("");
 
   const fetchData = async () => {
     try {
@@ -31,12 +36,10 @@ export default function MyPage() {
         api.get("/users/me"),
         api.get("/api/me/playlists"),
       ]);
+      const userData = profileRes.data.data || profileRes.data;
       setProfile(profileRes.data.data || profileRes.data);
+      setEditName(userData.name);
       setPlaylists(playlistRes.data.data || playlistRes.data);
-
-      // 만약 전체 곡 목록을 가져오는 API가 있다면 여기에 추가
-      // 예: const trackRes = await api.get("/api/me/tracks");
-      // setTracks(trackRes.data);
     } catch (e) {
       console.error("조회 실패", e);
     } finally {
@@ -70,6 +73,35 @@ export default function MyPage() {
     navigate("/");
   };
 
+  // 1. 프로필 수정 (PATCH /users/me)
+  const handleUpdateProfile = async () => {
+    if (!editName.trim()) return;
+    try {
+      await api.patch("/users/me", { name: editName });
+      setIsEditingProfile(false);
+      fetchData(); // 정보 갱신
+      alert("프로필이 수정되었습니다.");
+    } catch (e) {
+      console.error("수정 실패", e);
+      alert("프로필 수정에 실패했습니다.");
+    }
+  };
+
+  // 2. 회원 탈퇴 (DELETE /users/me)
+  const handleDeleteAccount = async () => {
+    if (window.confirm("정말로 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.")) {
+      try {
+        await api.delete("/users/me");
+        alert("회원 탈퇴가 완료되었습니다.");
+        handleLogout(); // 로그아웃 처리 및 메인 이동
+      } catch (e) {
+        console.error("탈퇴 실패", e);
+        alert("회원 탈퇴 처리에 실패했습니다.");
+      }
+    }
+  };
+
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-200 font-bold">로딩중...</div>;
 
   return (
@@ -85,30 +117,59 @@ export default function MyPage() {
             <Link to="/">
               <img src="/src/assets/logo.png" alt="Logo" className="w-32 hover:opacity-80 transition-opacity" />
             </Link>
-            <button onClick={handleLogout} className="text-lg font-semibold text-gray-700 hover:text-black">
-              로그아웃
-            </button>
+            <button
+                        onClick={handleLogout}
+                        className="px-5 py-2 rounded-full text-gray-700 font-medium hover:bg-black hover:text-white hover:border-black transition-all"
+                      >
+                        로그아웃
+                      </button>
           </div>
 
           {/* 프로필 섹션 & 생성 버튼 */}
-          <div className="w-full max-w-[1200px] flex justify-between items-center mb-12">
-            <div className="flex items-center gap-6">
-              <div className="w-20 h-20 bg-black rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-xl">
-                {profile?.name?.charAt(0)}
-              </div>
-              <div>
-                <h2 className="text-3xl font-extrabold text-gray-900">{profile?.name}님의 보관함</h2>
-                <p className="text-gray-600">{profile?.email}</p>
-              </div>
-            </div>
+          <div className="w-full max-w-[1200px] flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6 bg-white/30 p-8 rounded-[2.5rem] backdrop-blur-md border border-white/20">
+                    <div className="flex items-center gap-6">
+                      <div className="w-24 h-24 bg-black rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-xl">
+                        {profile?.name?.charAt(0)}
+                      </div>
 
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="px-6 py-3 bg-white/80 backdrop-blur-md border border-white/50 text-gray-900 rounded-2xl font-bold shadow-lg hover:bg-black hover:text-white transition-all transform hover:scale-105"
-            >
-              + 새 플레이리스트
-            </button>
-          </div>
+                      {isEditingProfile ? (
+                        <div className="flex flex-col gap-2">
+                          <input
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="text-2xl font-extrabold bg-white/50 border-b-2 border-black outline-none px-2"
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <button onClick={handleUpdateProfile} className="text-sm font-bold text-blue-600">저장</button>
+                            <button onClick={() => setIsEditingProfile(false)} className="text-sm font-bold text-gray-500">취소</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <h2 className="text-3xl font-extrabold text-gray-900">{profile?.name}님</h2>
+                            <button
+                              onClick={() => setIsEditingProfile(true)}
+                              className="p-1 hover:bg-black/5 rounded-full transition-colors"
+                            >
+                              <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                          </div>
+                          <p className="text-gray-600">{profile?.email}</p>
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setIsModalOpen(true)}
+                      className="px-6 py-3 bg-black text-white rounded-2xl font-bold shadow-lg hover:bg-gray-800 transition-all transform hover:scale-105"
+                    >
+                      + 새 플레이리스트
+                    </button>
+                  </div>
+
 
           {/* Pinterest Style Grid - 플레이리스트 목록 전용 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full max-w-[1200px] mt-8 mx-auto mb-20">
@@ -185,6 +246,17 @@ export default function MyPage() {
                </div>
             )}
           </div>
+
+          {/* [변경] 페이지 최하단: 회원탈퇴 영역 (위험 구역) */}
+                  <div className="w-full max-w-[1200px] mt-auto mb-10 pt-10 border-t border-gray-300/50 flex justify-between items-center text-gray-500">
+                    <p className="text-sm">© 2024 MyMusic Archive. All rights reserved.</p>
+                    <button
+                      onClick={handleDeleteAccount}
+                      className="text-sm hover:text-red-500 hover:underline transition-colors"
+                    >
+                      회원 탈퇴하기
+                    </button>
+                  </div>
 
         {/* 모달 부분 (기존과 동일) */}
         {isModalOpen && (

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "@/api/axios";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 
 // 1. 인터페이스 확장
 interface TrackDto {
   id: number;
+  playlistTrackId: number;
   title: string;
   artist: string;
   imageUrl: string;
@@ -72,42 +74,6 @@ export default function PlaylistDetail() {
   }, [playlistId]);
 
 
-  // 삭제 핸들러
-  const handleDelete = async () => {
-    if (!window.confirm("정말로 이 플레이리스트를 삭제하시겠습니까?")) return;
-    try {
-      await api.delete(`/api/me/playlists/${playlistId}`);
-      alert("삭제되었습니다.");
-      navigate("/mypage");
-    } catch (err) {
-      alert("삭제에 실패했습니다.");
-    }
-  };
-
-  // 수정 핸들러
-  const handleUpdate = async () => {
-    try {
-      // 1. 백엔드 DTO(isPublic)와 프론트 상태(public)의 이름을 맞춰줍니다.
-      const requestData = {
-        title: editForm.title,
-        description: editForm.description,
-        isPublic: editForm.public // 👈 여기서 이름을 바꿔서 전송!
-      };
-
-      console.log("백엔드로 보내는 데이터:", requestData);
-
-      // 2. PATCH 요청 보낼 때 requestData 사용
-      await api.patch(`/api/me/playlists/${playlistId}`, requestData);
-
-      alert("수정되었습니다. ✨");
-      setIsEditing(false);
-      fetchDetail(); // 수정된 'public' 값을 서버에서 다시 읽어옴
-    } catch (err) {
-      console.error("수정 실패:", err);
-      alert("수정에 실패했습니다.");
-    }
-  };
-
 // 트랙 삭제 함수
 const handleRemoveTrack = async (playlistTrackId: number) => {
   if (!window.confirm("플레이리스트에서 이 곡을 제거할까요? 🎵")) return;
@@ -132,6 +98,58 @@ const handleRemoveTrack = async (playlistTrackId: number) => {
 
   if (loading) return <div className="p-10 text-center font-bold">로딩중...</div>;
   if (!data) return null;
+
+  // 드래그 종료 핸들러 수정
+    const onDragEnd = async (result: DropResult) => {
+      if (!result.destination || !data) return;
+
+      // 1. UI 선반영 (Optimistic UI)
+      const items = Array.from(data.tracks);
+      const [reorderedItem] = items.splice(result.source.index, 1);
+      items.splice(result.destination.index, 0, reorderedItem);
+      setData({ ...data, tracks: items }); // 화면을 먼저 업데이트
+
+      // 2. 백엔드 API 전송
+      try {
+        await api.put(`/api/playlists/${playlistId}/track/order`, {
+          trackIds: items.map(t => t.playlistTrackId)
+        });
+        // ✅ 중요: 성공 시 fetchDetail()을 호출하지 않습니다!
+        // 서버에는 이미 저장이 되었고, 화면(State)도 이미 최신화되었기 때문입니다.
+        // 이렇게 하면 GET 요청이 발생하지 않아 Redis 조회수 로직도 타지 않습니다.
+      } catch (e) {
+        console.error("순서 저장 실패", e);
+        alert("순서 저장에 실패했습니다.");
+        fetchDetail(); // ❌ 실패했을 때만 원복을 위해 서버 데이터를 다시 가져옴
+      }
+    };
+
+  const handleDelete = async () => {
+      if (!window.confirm("정말로 이 플레이리스트를 삭제하시겠습니까?")) return;
+      try {
+        await api.delete(`/api/me/playlists/${playlistId}`);
+        alert("삭제되었습니다.");
+        navigate("/mypage");
+      } catch (err) {
+        alert("삭제에 실패했습니다.");
+      }
+    };
+
+    const handleUpdate = async () => {
+      try {
+        const requestData = {
+          title: editForm.title,
+          description: editForm.description,
+          isPublic: editForm.public
+        };
+        await api.patch(`/api/me/playlists/${playlistId}`, requestData);
+        alert("수정되었습니다. ✨");
+        setIsEditing(false);
+        fetchDetail();
+      } catch (err) {
+        alert("수정에 실패했습니다.");
+      }
+    };
 
 
 
@@ -208,35 +226,56 @@ const handleRemoveTrack = async (playlistTrackId: number) => {
         </div>
 
         {/* 수록곡 섹션 (기존 코드 유지) */}
-        <h2 className="text-2xl font-bold text-gray-800 mb-6 px-2">수록곡 ({data.tracks.length})</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 pb-20">
-          {data.tracks.map((track) => (
-            <div key={track.id} className="bg-white p-4 rounded-[2rem] shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all group">
-              {/* ... 트랙 아이템 디자인 ... */}
-              <div className="relative aspect-square rounded-2xl overflow-hidden mb-3">
-                <img src={track.imageUrl} alt={track.title} className="w-full h-full object-cover" />
-                {/* 👈 삭제 버튼 배치 (오너일 때만 노출) */}
-                        {data.owner && (
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <button
-                              onClick={() => handleRemoveTrack(track.playlistTrackId)}
-                              className="bg-white/90 p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90"
-                              title="곡 제거"
-                            >
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        )}
-              </div>
-              <p className="font-bold text-gray-800 truncate">{track.title}</p>
-              <p className="text-xs text-gray-500 truncate">{track.artist}</p>
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 px-2">
+                  수록곡 ({data.tracks.length})
+                  {data.owner && <span className="text-sm font-normal text-gray-500 ml-3">드래그하여 순서를 바꿀 수 있습니다.</span>}
+                </h2>
 
-
-            </div>
-          ))}
-        </div>
+                {/* --- 드래그 앤 드롭 영역 --- */}
+        <DragDropContext onDragEnd={onDragEnd}>
+                  <Droppable droppableId="tracks-grid" direction="horizontal">
+                    {(provided) => (
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 pb-20">
+                        {data.tracks.map((track, index) => (
+                          <Draggable key={track.playlistTrackId} draggableId={String(track.playlistTrackId)} index={index} isDragDisabled={!data.owner}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`bg-white p-4 rounded-[2rem] shadow-sm transition-all group relative ${
+                                  snapshot.isDragging ? "shadow-2xl ring-2 ring-black z-50 scale-105" : "hover:shadow-2xl hover:-translate-y-1"
+                                }`}
+                              >
+                                <div className="relative aspect-square rounded-2xl overflow-hidden mb-3">
+                                  <img src={track.imageUrl} alt={track.title} className="w-full h-full object-cover" />
+                                  {data.owner && (
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation(); // 드래그 이벤트와 분리
+                                          handleRemoveTrack(track.playlistTrackId);
+                                        }}
+                                        className="bg-white/90 p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90"
+                                      >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="font-bold text-gray-800 truncate">{track.title}</p>
+                                <p className="text-xs text-gray-500 truncate">{track.artist}</p>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
       </div>
     </div>
   );
