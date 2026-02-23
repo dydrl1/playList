@@ -173,17 +173,23 @@ const handleAddTrack = async (track: any) => {
 
   // 내 플레이리스트 목록 가져오기
   useEffect(() => {
+    // 1. 로그인 여부와 상관없이 "무조건" 공개 플레이리스트를 먼저 가져옵니다.
     fetchPublicPlaylists();
 
-    // 로그인 상태라면 내 플레이리스트도 가져오기
-    if (isLoggedIn) {
-      api.get("/api/me/playlists").then(res => {
-        setMyPlaylists(res.data.data || []);
-        // 첫 번째 플레이리스트를 기본값으로 설정 (선택 사항)
-        if (res.data.data?.length > 0) setSelectedPlaylistId(res.data.data[0].id);
-      });
+    // 2. 로그인 상태이고 토큰이 있을 때만 "내 플레이리스트"를 가져옵니다.
+    const token = localStorage.getItem("accessToken");
+    if (isLoggedIn && token) {
+      api.get("/api/me/playlists")
+        .then(res => {
+          setMyPlaylists(res.data.data || []);
+          if (res.data.data?.length > 0) setSelectedPlaylistId(res.data.data[0].id);
+        })
+        .catch(err => {
+          console.error("내 플리 로딩 실패:", err);
+          // 내 플리 로딩에 실패해도 홈 화면이 멈추거나 튕기지 않도록 방어
+        });
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn]); // isLoggedIn이 변할 때(로그인/로그아웃 시) 다시 실행
 
 
   // 무한 스크롤 최적화 및 API 연결
@@ -304,7 +310,7 @@ const handleLikeToggle = async (e: React.MouseEvent, playlist: Playlist) => {
             />
             <input
               type="text"
-              placeholder="플레이리스트를 검색해보세요"
+              placeholder="노래 제목을 검색해보세요"
               value={query}
               onChange={(e) => {
                 const value = e.target.value;

@@ -18,9 +18,9 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       const refreshToken = localStorage.getItem("refreshToken");
+      // 수정: 리프레시 토큰이 없으면 강제 이동 대신 에러만 던짐
       if (!refreshToken) {
-        window.location.href = "/login";
-        return Promise.reject(error);
+         return Promise.reject(error);
       }
 
       try {
@@ -36,7 +36,6 @@ api.interceptors.response.use(
       } catch {
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
         return Promise.reject(error);
       }
     }
