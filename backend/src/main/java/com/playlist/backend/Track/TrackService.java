@@ -1,6 +1,7 @@
 package com.playlist.backend.Track;
 
 import com.playlist.backend.Track.dto.TrackCreateRequest;
+import com.playlist.backend.Track.dto.TrackPlayResponse;
 import com.playlist.backend.Track.dto.TrackResponse;
 import com.playlist.backend.Track.dto.TrackUpdateRequest;
 import com.playlist.backend.common.exception.BusinessException;
@@ -131,5 +132,28 @@ public class TrackService {
         Track track = trackRepository.findById(trackId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TRACK_NOT_FOUND));
         trackRepository.delete(track); // DELETE
+    }
+
+
+    /**
+     * 곡 재생 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public TrackPlayResponse getTrackPlayInfo(Long trackId) {
+        // 1. 곡 존재 여부 확인
+        Track track = trackRepository.findById(trackId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TRACK_NOT_FOUND));
+
+        // 2. Null 방어 로직 추가
+        return TrackPlayResponse.builder()
+                .trackId(track.getId())
+                .title(track.getTitle())
+                .artist(track.getArtist())
+                // sourceType이 null이면 "UNKNOWN" 혹은 기본값 세팅
+                .sourceType(track.getSourceType() != null ? track.getSourceType() : "YOUTUBE")
+                .sourceUrl(track.getSourceUrl())
+                // imageUrl이 null이면 빈 문자열로 대체하여 NPE 방지
+                .imageUrl(track.getImageUrl() != null ? track.getImageUrl() : "")
+                .build();
     }
 }

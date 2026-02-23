@@ -11,6 +11,7 @@ import java.util.List;
 public class PlaylistDetailResponse {
     private Long playlistId;
     private Long ownerUserId;
+    private String ownerName;
     private String title;
     private String description;
     private boolean isPublic;
@@ -34,6 +35,7 @@ public class PlaylistDetailResponse {
         return PlaylistDetailResponse.builder()
                 .playlistId(p.getId())
                 .ownerUserId(p.getUser().getId())
+                .ownerName(p.getUser().getName())
                 .title(p.getTitle())
                 .description(p.getDescription())
                 .isPublic(p.isPublic())

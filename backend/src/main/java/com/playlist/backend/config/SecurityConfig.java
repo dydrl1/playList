@@ -63,8 +63,14 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/actuator/health",
-                                "/integrations/search"
+                                "/integrations/search",
+                                "/api/playlists/",
+                                "/api/playlists/**",
+                                "/tracks/*/play"
                         ).permitAll()
+
+                        // 인증이 필요한 API
+                        .requestMatchers("/api/me/**").authenticated()
                         .anyRequest().authenticated()
                 )
 
