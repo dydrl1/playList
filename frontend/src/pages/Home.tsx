@@ -174,6 +174,7 @@ const handleAddTrack = async (track: any) => {
   // 내 플레이리스트 목록 가져오기
   useEffect(() => {
     // 1. 로그인 여부와 상관없이 "무조건" 공개 플레이리스트를 먼저 가져옵니다.
+    console.log("홈 화면 진입 - 최신 목록 로드");
     fetchPublicPlaylists();
 
     // 2. 로그인 상태이고 토큰이 있을 때만 "내 플레이리스트"를 가져옵니다.
