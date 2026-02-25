@@ -84,37 +84,40 @@ public class YouTubeSearchService implements ExternalSearchService {
     
     // 검색 정확도를 높히기 위한 메서드 (통과/탈락 이 아닌 점수 반환)
     private static final Pattern NEG_TITLE = Pattern.compile(
-            "(?i)\\b(cover|live|reaction|lyrics|dance|performance|teaser|mv|m/v|shorts|vlog)\\b|직캠|리액션|커버|가사|댄스"
+            "(?i)\\b(cover|live|reaction|lyrics|dance|shorts|vlog|karaoke|instrumental|1hour|loop|hour)\\b|직캠|노래방|MR|inst"
     );
 
-    private int scoreCandidate(String title, String channel, String desc, Integer durSec) {
+    // 2. scoreCandidate 메서드 수정
+    private int scoreCandidate(String title, String channel, String desc, Integer durSec, String originalArtist) {
         String t = safeLower(title);
-        String c = safe(channel);
+        String c = safeLower(channel); // 채널명도 소문자로 비교
         String d = safeLower(desc);
 
         int score = 0;
 
-        // 강한 긍정 신호
-        if (c.endsWith(" - Topic")) score += 5;
+        // [추가] 원본 아티스트 이름 포함 시 가점 (매우 중요)
+        if (originalArtist != null && t.contains(originalArtist.toLowerCase())) score += 5;
+
+        // [추가] VEVO 공식 채널 가점
+        if (c.contains("vevo")) score += 4;
+
+        if (c.endsWith(" - topic")) score += 10; // 점수 대폭 상향 (가장 정확함)
         if (d.contains("provided to youtube")) score += 5;
         if (t.contains("official audio")) score += 3;
 
-        // 보정(Topic 아닌 공식 채널 대응)
-        if (t.contains("audio")) score += 2;
-        if (t.contains("official")) score += 1;
-        if (t.contains("music")) score += 1;
-
-        // 강한 부정 신호
-        if (NEG_TITLE.matcher(title == null ? "" : title).find()) score -= 6;
+        // 부정 신호 처리
+        if (NEG_TITLE.matcher(title == null ? "" : title).find()) score -= 10; // 감점폭 확대
 
         // 길이 힌트
         if (durSec != null) {
             if (durSec >= 90 && durSec <= 420) score += 2;
-            else if (durSec > 900) score -= 3;
+            else if (durSec < 60) score -= 5; // 쇼츠(Shorts)류 제외
+            else if (durSec > 900) score -= 5;
         }
 
         return score;
     }
+
 
     private String safe(String s) { return s == null ? "" : s; }
     private String safeLower(String s) { return s == null ? "" : s.toLowerCase(); }
@@ -198,7 +201,7 @@ public class YouTubeSearchService implements ExternalSearchService {
                 }
             }
 
-            int score = scoreCandidate(title, channel, desc, durationSec);
+            int score = scoreCandidate(title, channel, desc, durationSec, "원본아티스트명");
 
             // 최소 컷(운영하며 조정): STRICT는 조금 높게, RELAXED는 낮게
             int cutoff = (mode == SearchMode.STRICT) ? 1 : 0;

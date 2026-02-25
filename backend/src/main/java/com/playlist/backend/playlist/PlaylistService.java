@@ -15,6 +15,7 @@ import com.playlist.backend.user.User;
 import com.playlist.backend.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,9 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -44,6 +43,7 @@ public class PlaylistService {
     private final StringRedisTemplate stringRedisTemplate;
     private final TrackRepository trackRepository;
     private final RedisTemplate<String, String> redisTemplate;
+    private final PlaylistViewCountRepository viewCountRepository;
 
     // =========================================
     //  유틸 메서드 (검증용)
@@ -109,7 +109,8 @@ public class PlaylistService {
                 .map(p -> {
                     // 내 플리 목록 조회 시, 내가 좋아요 눌렀는지 여부 판단
                     boolean isLiked = playlistLikeRepository.existsByPlaylistIdAndUserId(p.getId(), userId);
-                    return PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
+                    long totalView = p.getViewCount() + viewCountRepository.getCount(p.getId());
+                    return PlaylistResponse.from(p, totalView, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
                 })
                 .toList();
     }
@@ -135,7 +136,7 @@ public class PlaylistService {
         log.info("createPlaylist userId={}", userId);
 
         Playlist saved = playlistRepository.save(playlist);
-        return PlaylistResponse.from(saved, 0, false);
+        return PlaylistResponse.from(saved, 0L, 0, false);
     }
 
     // =========================================
@@ -156,7 +157,8 @@ public class PlaylistService {
 
         int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
         boolean isLiked = playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, userId);
-        return PlaylistResponse.from(playlist, likeCount, isLiked);
+        long totalView = playlist.getViewCount() + viewCountRepository.getCount(playlist.getId());
+        return PlaylistResponse.from(playlist, totalView, likeCount, isLiked);
     }
 
     // =========================================
@@ -171,7 +173,6 @@ public class PlaylistService {
         playlistRepository.delete(playlist);
     }
 
-
     // =========================================
     //  플레이리스트 상세 보기
     // =========================================
@@ -179,58 +180,59 @@ public class PlaylistService {
     public PlaylistDetailResponse getDetail(Long playlistId, Long loginUserId) {
         Playlist playlist = getPlaylistOrThrow(playlistId);
 
-        // 1. 조회수 중복 방지 로직 (상단에 배치)
-        increaseViewCountWithRedis(playlist, loginUserId);
+        // 1. 조회수 로직 (중복 방지 포함된 레포지토리 호출)
+        viewCountRepository.incrementIfFirstVisit(playlistId, loginUserId);
 
-        // 비공개 접근 제어
-        if(!playlist.isPublic()){
-            if(loginUserId == null){
-                throw new BusinessException(ErrorCode.PLAYLIST_PRIVATE);
-            }
-            validatePrivateAccess(loginUserId, playlist);
+        // 2. 최신 합산 조회수 계산
+        long latestViewCount = playlist.getViewCount() + viewCountRepository.getCount(playlistId);
+
+        // 3. 비공개 체크 로직
+        checkAccessAuthority(playlist, loginUserId);
+
+        // 4. 나머지 트랙/좋아요 정보 조회
+        List<TrackItemResponse> tracks = getTracks(playlistId);
+        int likeCount = getLikeCount(playlistId);
+        boolean likedByMe = isLikedByMe(playlistId, loginUserId);
+
+        return PlaylistDetailResponse.of(playlist, latestViewCount, likeCount, likedByMe, tracks, loginUserId);
+    }
+
+    private void checkAccessAuthority(Playlist playlist, Long userId) {
+        if (!playlist.isPublic()) {
+            if (userId == null) throw new BusinessException(ErrorCode.PLAYLIST_PRIVATE);
+            validatePrivateAccess(userId, playlist);
         }
+    }
 
-        // 트랙: fetch join(또는 entity graph)로 1 쿼리
-        List<TrackItemResponse> tracks = playlistTrackRepository
-                .findQueueByPlaylistId(playlistId)
+    /**
+     * 트랙 목록 조회 (Private Helper)
+     */
+    private List<TrackItemResponse> getTracks(Long playlistId) {
+        return playlistTrackRepository.findQueueByPlaylistId(playlistId)
                 .stream()
                 .map(TrackItemResponse::from)
                 .toList();
-        // 좋아요 수 : count 1쿼리
-        int likeCount = (int) playlistLikeRepository.countByPlaylistId(playlistId);
-
-        // LikeByMe: exists 1쿼리
-        boolean likedByMe = (loginUserId != null)
-                && playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, loginUserId);
-
-        return PlaylistDetailResponse.of(playlist, likeCount, likedByMe, tracks, loginUserId);
     }
 
-    private void increaseViewCountWithRedis(Playlist playlist, Long userId) {
-        // 비로그인 사용자는 IP 등으로 식별하거나, 일단 로그인을 기준으로 설명합니다.
-        String userKey = (userId != null) ? userId.toString() : "guest";
-        String redisKey = "view:playlist:" + playlist.getId() + ":user:" + userKey;
+    /**
+     * 총 좋아요 수 조회 (Private Helper)
+     */
+    private int getLikeCount(Long playlistId) {
+        return (int) playlistLikeRepository.countByPlaylistId(playlistId);
+    }
 
-        try {
-            // Redis에 키가 없으면 처음 조회하는 것 (24시간 유효)
-            Boolean isFirstView = redisTemplate.opsForValue().setIfAbsent(redisKey, "true", 24, TimeUnit.HOURS);
-
-            if (Boolean.TRUE.equals(isFirstView)) {
-                playlist.incrementViewCount(); // 이 메서드 안에서 viewCount++ 실행
-            }
-        } catch (Exception e) {
-            // Redis가 죽었을 때 발생하는 경고 (로그에 찍혔던 상황)
-            log.warn("Redis unavailable. Skip unique view. playlistId={}, userId={}", playlist.getId(), userId);
-
-            // [선택] Redis가 없으면 그냥 무조건 올릴지, 아니면 안 올릴지 결정
-            // playlist.incrementViewCount(); // Redis 없어도 일단 올리려면 주석 해제
-        }
+    /**
+     * 로그인 사용자의 좋아요 여부 확인 (Private Helper)
+     */
+    private boolean isLikedByMe(Long playlistId, Long userId) {
+        return (userId != null) && playlistLikeRepository.existsByPlaylistIdAndUserId(playlistId, userId);
     }
 
 
-    // 최신/조회순 전체 보기
+    @Cacheable(value = "publicPlaylists", key = "#sort.name() + ':' + #pageable.pageNumber", cacheManager = "cacheManager")
     @Transactional(readOnly = true)
     public Page<PlaylistResponse> getPublicPlaylists(PublicPlaylistSort sort, Pageable pageable, Long loginUserId) {
+        // 1. 기본 페이지 조회
         Page<Playlist> page = switch (sort) {
             case VIEW -> playlistRepository.findByIsPublicTrueOrderByViewCountDescIdDesc(pageable);
             case LATEST -> playlistRepository.findByIsPublicTrueOrderByIdDesc(pageable);
@@ -240,11 +242,25 @@ public class PlaylistService {
         if (page.isEmpty()) return Page.empty(pageable);
 
         List<Long> ids = page.getContent().stream().map(Playlist::getId).toList();
+
+        // 2. 좋아요 수 일괄 조회 (이미 하신 부분)
         Map<Long, Integer> likeCountMap = getLikeCountMap(ids);
 
+        // 3. [개선] 내가 좋아요 누른 ID 목록 한 번에 조회 (In-절)
+        Set<Long> likedPlaylistIds = new HashSet<>();
+        if (loginUserId != null) {
+            likedPlaylistIds = new HashSet<>(
+                    playlistLikeRepository.findAllPlaylistIdsByUserIdAndPlaylistIdsIn(loginUserId, ids)
+            );
+        }
+
+        final Set<Long> finalLikedIds = likedPlaylistIds;
         return page.map(p -> {
-            boolean isLiked = (loginUserId != null) && playlistLikeRepository.existsByPlaylistIdAndUserId(p.getId(), loginUserId);
-            return PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
+            boolean isLiked = finalLikedIds.contains(p.getId());
+            // [추가] 앞서 만든 Redis 조회수 합산 로직을 여기서 적용
+            long totalViewCount = p.getViewCount() + viewCountRepository.getCount(p.getId());
+
+            return PlaylistResponse.from(p, totalViewCount, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
         });
     }
 
@@ -252,20 +268,40 @@ public class PlaylistService {
     // 좋아요 순 전체보기
     @Transactional(readOnly = true)
     public Page<PlaylistResponse> getPublicPlaylistsOrderByLike(Pageable pageable, Long loginUserId) {
+        // 1. 좋아요 순 페이징 조회 (DB 쿼리)
         var page = playlistRepository.findPublicOrderByLikeCountDesc(pageable);
         if (page.isEmpty()) return Page.empty(pageable);
 
+        // 2. 현재 페이지의 ID 리스트 추출
         List<Long> ids = page.getContent().stream().map(Playlist::getId).toList();
 
+        // 3. 좋아요 수 맵 생성 (일괄 조회)
         Map<Long, Integer> likeCountMap = playlistLikeRepository.countGroupByPlaylistIds(ids).stream()
                 .collect(Collectors.toMap(
                         PlaylistLikeCountRow::getPlaylistId,
                         row -> row.getCnt().intValue()
                 ));
 
+        // 4. [개선] 로그인 유저의 좋아요 여부 일괄 조회 (N+1 방지)
+        Set<Long> likedIds = (loginUserId != null)
+                ? new HashSet<>(playlistLikeRepository.findAllPlaylistIdsByUserIdAndPlaylistIdsIn(loginUserId, ids))
+                : Collections.emptySet();
+
+        // 5. 결과 조합 및 DTO 생성 (4개 인자 사용)
         return page.map(p -> {
-            boolean isLiked = (loginUserId != null) && playlistLikeRepository.existsByPlaylistIdAndUserId(p.getId(), loginUserId);
-            return PlaylistResponse.from(p, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
+            // 메모리(Set)에서 좋아요 여부 확인
+            boolean isLiked = likedIds.contains(p.getId());
+
+            // Redis 실시간 조회수 합산
+            long totalViewCount = p.getViewCount() + viewCountRepository.getCount(p.getId());
+
+            // 수정된 PlaylistResponse.from 호출 (Playlist, viewCount, likeCount, isLiked)
+            return PlaylistResponse.from(
+                    p,
+                    totalViewCount,
+                    likeCountMap.getOrDefault(p.getId(), 0),
+                    isLiked
+            );
         });
     }
 

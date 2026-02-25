@@ -1,9 +1,0 @@
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/playlist
-    username: myapp_user
-    password: myapp1234   # 실제 값은 로컬 파일에서만
-  data:
-    redis:
-      host: localhost
-      port: 6379

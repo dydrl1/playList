@@ -24,7 +24,7 @@ public class PlaylistDetailResponse {
 
     public static PlaylistDetailResponse of(
             Playlist p,
-            int likeCount,
+            long latestViewCount, int likeCount,
             boolean likedByMe,
             List<TrackItemResponse> tracks,
             Long currentUserId    // 현재 로그인한 유저 ID를 파라미터로 받음

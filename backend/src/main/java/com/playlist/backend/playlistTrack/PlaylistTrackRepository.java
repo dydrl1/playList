@@ -2,6 +2,7 @@ package com.playlist.backend.playlistTrack;
 
 import com.playlist.backend.playlist.Playlist;
 import com.playlist.backend.playlistLike.PlaylistLikeCountRow;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

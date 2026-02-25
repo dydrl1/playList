@@ -20,12 +20,10 @@ public class YouTubeClient {
     @Value("${youtube.api-key}")
     private String apiKey;
 
-    //  기존 메서드: 기본 모드(STRICT)로 위임
     public YouTubeSearchResponse search(String query, int limit) {
         return search(query, limit, SearchMode.STRICT);
     }
 
-    //  신규 오버로드 메서드: mode에 따라 파라미터/쿼리 보정
     public YouTubeSearchResponse search(String query, int limit, SearchMode mode) {
         String q = buildQuery(query, mode);
 
@@ -39,7 +37,7 @@ public class YouTubeClient {
                                 .queryParam("maxResults", limit)
                                 .queryParam("q", q)
                                 .queryParam("key", apiKey)
-                                .queryParam("videoEmbeddable", "true");
+                                .queryParam("videoEmbeddable", "true"); // 1차 필터링
 
                         if (mode == SearchMode.STRICT) {
                             b = b.queryParam("videoCategoryId", "10")
@@ -51,37 +49,25 @@ public class YouTubeClient {
                     .bodyToMono(YouTubeSearchResponse.class)
                     .block();
 
-            // ✅ body가 null이면 외부 응답 이상
-            if (body == null) {
-                throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
-            }
-
+            if (body == null) throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
             return body;
-
-        } catch (WebClientRequestException e) {
-            //  네트워크/연결/타임아웃 계열
-            throw new BusinessException(ErrorCode.EXTERNAL_API_TIMEOUT);
-
-        } catch (WebClientResponseException e) {
-            //  외부 서비스가 4xx/5xx 응답을 준 경우(쿼터 429는 별도 처리 가능)
-            if (e.getStatusCode().value() == 429) {
-                throw new BusinessException(ErrorCode.YOUTUBE_QUOTA_EXCEEDED);
-            }
-            throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
-
         } catch (Exception e) {
-            //  JSON 파싱 실패 등 예상 못한 변환 오류도 외부 응답 이상으로 통일
-            throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
+            handleException(e);
+            return null;
         }
     }
 
-
+    /**
+     *  videosByIds 메서드
+     * part 파라미터에 'status'를 추가하여 임베드 가능 여부를 받아옵니다.
+     */
     public YouTubeVideosResponse videosByIds(String commaSeparatedIds) {
         try {
             YouTubeVideosResponse body = youtubeWebClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/videos")
-                            .queryParam("part", "contentDetails,snippet")
+                            // ✅ status를 추가해야 DTO의 isPlayable()이 동작합니다.
+                            .queryParam("part", "contentDetails,snippet,status")
                             .queryParam("id", commaSeparatedIds)
                             .queryParam("key", apiKey)
                             .build())
@@ -94,26 +80,29 @@ public class YouTubeClient {
             }
             return body;
 
-        } catch (WebClientRequestException e) {
-            throw new BusinessException(ErrorCode.EXTERNAL_API_TIMEOUT);
-
-        } catch (WebClientResponseException e) {
-            if (e.getStatusCode().value() == 429) {
-                throw new BusinessException(ErrorCode.YOUTUBE_QUOTA_EXCEEDED);
-            }
-            throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
-
         } catch (Exception e) {
-            throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
+            handleException(e);
+            return null;
         }
     }
 
-    // mode별 쿼리 보정 (서비스 정책에 맞게 조절)
+    // 예외 처리 로직 공통화 (코드 깔끔하게 정리)
+    private void handleException(Exception e) {
+        if (e instanceof WebClientRequestException) {
+            throw new BusinessException(ErrorCode.EXTERNAL_API_TIMEOUT);
+        } else if (e instanceof WebClientResponseException resEx) {
+            if (resEx.getStatusCode().value() == 429) {
+                throw new BusinessException(ErrorCode.YOUTUBE_QUOTA_EXCEEDED);
+            }
+        }
+        throw new BusinessException(ErrorCode.EXTERNAL_API_RESPONSE_INVALID);
+    }
+
     private String buildQuery(String query, SearchMode mode) {
         if (mode == SearchMode.STRICT) {
-            return query + " official audio -cover -live -reaction -lyrics -mv -m/v -shorts -vlog";
+            // 검색 시 부정어 키워드를 -로 붙여주는 방식은 매우 효과적입니다.
+            return query + " official audio -cover -live -reaction -lyrics -shorts -vlog -karaoke";
         }
-        // RELAXED: 결과 확보용(너무 공격적으로 빼지 않기)
         return query + " -reaction -vlog";
     }
 }

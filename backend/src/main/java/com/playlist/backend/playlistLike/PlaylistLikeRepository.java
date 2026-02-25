@@ -26,4 +26,12 @@ public interface PlaylistLikeRepository extends JpaRepository<PlaylistLike, Long
 
     // 좋아요 엔티티 가져오기
     Optional<PlaylistLike> findByUserIdAndPlaylistId(Long userId, Long playlistId);
+
+    // 특정 유저가 넘겨받은 ID 목록 중에서 좋아요를 누른 플리 ID만 골라 가져옴
+    @Query("SELECT pl.playlist.id FROM PlaylistLike pl " +
+            "WHERE pl.user.id = :userId AND pl.playlist.id IN :playlistIds")
+    List<Long> findAllPlaylistIdsByUserIdAndPlaylistIdsIn(
+            @Param("userId") Long userId,
+            @Param("playlistIds") List<Long> playlistIds
+    );
 }
