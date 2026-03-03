@@ -3,12 +3,12 @@
 
 ## 📑 프로젝트 개요
 - **설명**: 유튜브의 방대한 영상 데이터를 검색하고, 나만의 플레이리스트를 구성하여 관리할 수 있는 백엔드 중심 프로젝트입니다.
-- **개발 기간**: 202X.XX ~ 202X.XX (N주)
-- **주요 역할**: 백엔드 API 설계 및 구현, 인프라 구축
+- **개발 기간**: 2026.01 ~ 2026.02 (약 8주)
+- **주요 역할**: 백엔드 API 설계 및 구현, 인프라 구축, 프론트엔드 바이브코딩
 
 ## 🛠 Tech Stack
-- **Language & Framework**: Java 21, Spring Boot 3.x
-- **Database**: MySQL (RDB), Redis (Cache)
+- **Language & Framework**: Java 21, Spring Boot 3.5.7
+- **Database**: MariaDB (RDB), Redis (Cache)
 - **Security**: Spring Security, JWT (JSON Web Token)
 - **Infrastructure**: Cloudtype (Deployment)
 - **External API**: YouTube Data API v3
