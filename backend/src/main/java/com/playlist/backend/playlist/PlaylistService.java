@@ -229,7 +229,7 @@ public class PlaylistService {
     }
 
 
-    @Cacheable(value = "publicPlaylists", key = "#sort.name() + ':' + #pageable.pageNumber", cacheManager = "cacheManager")
+    // @Cacheable(value = "publicPlaylists", key = "#sort.name() + ':' + #pageable.pageNumber", cacheManager = "cacheManager")
     @Transactional(readOnly = true)
     public Page<PlaylistResponse> getPublicPlaylists(PublicPlaylistSort sort, Pageable pageable, Long loginUserId) {
         // 1. 기본 페이지 조회
@@ -258,8 +258,8 @@ public class PlaylistService {
         return page.map(p -> {
             boolean isLiked = finalLikedIds.contains(p.getId());
             // [추가] 앞서 만든 Redis 조회수 합산 로직을 여기서 적용
-            long totalViewCount = p.getViewCount() + viewCountRepository.getCount(p.getId());
-
+            //long totalViewCount = p.getViewCount() + viewCountRepository.getCount(p.getId());
+            long totalViewCount = p.getViewCount() + 0;
             return PlaylistResponse.from(p, totalViewCount, likeCountMap.getOrDefault(p.getId(), 0), isLiked);
         });
     }
