@@ -7,10 +7,17 @@ spring:
   profiles:
     active: local
 
-  datasource:
-    url: jdbc:mysql://localhost:3306/playlist_db?serverTimezone=Asia/Seoul&characterEncoding=utf8
-    username: myapp_user
-    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:1234}
+
+  redis:
+    # 환경 변수 SPRING_DATA_REDIS_HOST가 있으면 그걸 쓰고, 없으면 127.0.0.1을 써라
+    host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
+    port: ${SPRING_DATA_REDIS_PORT:6379}
+    password: ${SPRING_DATA_REDIS_PASSWORD:1234}
 
   jpa:
     hibernate:
