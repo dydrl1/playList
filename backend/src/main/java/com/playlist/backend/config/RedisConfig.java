@@ -24,9 +24,9 @@ public class RedisConfig {
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
-        // [핵심] 호스트, 포트, 비밀번호를 명시적으로 설정
+        //  호스트, 포트, 비밀번호를 명시적으로 설정
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration(host, port);
-        config.setPassword(password);
+         config.setPassword(password);
         return new LettuceConnectionFactory(config);
     }
 

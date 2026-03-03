@@ -37,7 +37,6 @@ dependencies {
 	// MariaDB
 	implementation 'org.mariadb.jdbc:mariadb-java-client'
 
-	runtimeOnly 'com.mysql:mysql-connector-j'
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok:1.18.36'

@@ -4,36 +4,34 @@ server:
 spring:
   application:
     name: backend
-  profiles:
-    active: local
+
+
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_NAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
 
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
       port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:1234}
-
-  redis:
-    # 환경 변수 SPRING_DATA_REDIS_HOST가 있으면 그걸 쓰고, 없으면 127.0.0.1을 써라
-    host: ${SPRING_DATA_REDIS_HOST:127.0.0.1}
-    port: ${SPRING_DATA_REDIS_PORT:6379}
-    password: ${SPRING_DATA_REDIS_PASSWORD:1234}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
 
   jpa:
     hibernate:
       ddl-auto: update
+    show-sql: true
     properties:
       hibernate:
         format_sql: true
-        default_batch_fetch_size: 100
-        # Dialect 에러 방지를 위해 명시
-        dialect: org.hibernate.dialect.MySQL8Dialect
     open-in-view: false
 
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.type.descriptor.sql.BasicBinder: trace
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: 1800000
+  refresh-token-expiration: 1209600000
 
 youtube:
+  api-key: ${YOUTUBE_API_KEY}
   base-url: https://www.googleapis.com/youtube/v3
